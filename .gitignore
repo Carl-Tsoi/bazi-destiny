@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.turbo/
+output/
+data/
+.DS_Store
+*.log
