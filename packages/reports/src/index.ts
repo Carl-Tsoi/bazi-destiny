@@ -176,3 +176,6 @@ export type { NarrativeInput } from './narrative.js';
 
 /** Export as text (alias for generateReport, same format) */
 export { generateReport as generateText };
+
+export { generateAiAnalyses } from './ai-engines.js';
+export type { AiInput, AiResult } from './ai-engines.js';

@@ -282,48 +282,13 @@ export async function generateBaziReport(
     lines.push('');
   }
 
-  // AI叙事（默认跳过，--ai 启用）
+    // AI 分析章节（--ai 启用时，优先使用预计算结果）
   if (!birthInfo?.skipAi) {
-    try {
-      const narratives = await generateNarratives({
-        name: birthInfo?.name,
-        pattern: bazi.pattern || '',
-        yongShen: {
-          yongShen: yongShenResult.final.yongShen,
-          xiShen: yongShenResult.final.xiShen,
-          jiShen: yongShenResult.final.jiShen,
-          methods: (yongShenResult.engines ?? []).map((e: any) => ({
-            method: e.name, yongShen: e.yongShen ?? '', reason: e.diagnostics?.join('；') ?? '',
-          })),
-        },
-        finalYongShen: yongShenResult.final.yongShen,
-        finalXiShen: yongShenResult.final.xiShen,
-        finalJiShen: yongShenResult.final.jiShen,
-        dayStrength: yongShenResult.fuyi.dayStrength,
-        pillars: Object.fromEntries(
-          (['年柱','月柱','日柱','时柱'] as const).map(k => [k, `${(bazi.pillars as any)[k].gan}${(bazi.pillars as any)[k].zhi} ${(bazi.pillars as any)[k].shishen} ${(bazi.pillars as any)[k].nayin || ''}`])
-        ),
-        dayun: bazi.dayun.steps.map(s => ({
-          age: `${s.startAge}-${s.endAge}`, ganZhi: `${s.gan}${s.zhi}`, tenGod: `${s.ganShishen}/${s.zhiShishen}`,
-        })),
-        currentDayun: '',
-        currentYear: String(new Date().getFullYear()),
-        liunian: '',
-        dimensions: Object.fromEntries(
-          BAZI_DIMENSIONS.map(dim => [dim.id, baziDimension(bazi, dim.id, interactions, { gender: birthInfo?.gender, xiShen: yongShenResult.final.xiShen })])
-        ),
-        interactions: { gans: [], zhis: [], dayunEffects: [] },
-      });
-      lines.push('## AI 叙事分析');
-      lines.push('');
-      lines.push(narratives.yuanjuEvaluation || '');
-      lines.push('');
-      if (narratives.dayunEvaluation) {
-        lines.push(narratives.dayunEvaluation);
-        lines.push('');
-      }
-    } catch (e: any) {
-      lines.push(`<!-- AI narrative skipped: ${e?.message || e} -->`);
+    const aiData = (precomputed as any)?.aiResult;
+    if (aiData?.yuanju) {
+      lines.push('## 原局分析'); lines.push(''); lines.push(aiData.yuanju); lines.push('');
+      if (aiData.dayun) { lines.push('## 大运分析'); lines.push(''); lines.push(aiData.dayun); lines.push(''); }
+      if (aiData.liunian) { lines.push('## 流年分析'); lines.push(''); lines.push(aiData.liunian); lines.push(''); }
     }
   }
 

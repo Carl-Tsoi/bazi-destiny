@@ -16,6 +16,8 @@ import { cite, scoreChart, analyzeChart, analyzeAllDimensions } from '@bazi-dest
 import type { ChartResult } from '@bazi-destiny/knowledge-base';
 import { generateBaziReport, generateScoringReport } from './detailed.js';
 import type { PrecomputedData } from './types.js';
+import { generateAiAnalyses } from '@bazi-destiny/reports';
+import type { AiInput } from '@bazi-destiny/reports';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
 
@@ -137,8 +139,41 @@ program
           age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(),
         });
 
+        // L5b: AI 分析（--ai 时并行调用3次API）
+        let aiResult: any;
+        const calcAge = new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear();
+        if (options.ai) {
+          const currentYear = new Date().getFullYear();
+          const tianGan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+          const diZhi = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+          const liunianGan = tianGan[(currentYear - 4) % 10];
+          const liunianZhi = diZhi[(currentYear - 4) % 12];
+          const curDayun = analysis.dayunJudgments.find((d: any) => d.step.startAge <= calcAge && d.step.endAge >= calcAge);
+          const nextDayun = analysis.dayunJudgments.find((d: any) => d.step.startAge > calcAge);
+          const specialtySummary = specialty.dimensions
+            .filter((d: any) => d.items.length > 0)
+            .map((d: any) => d.dimension + ': ' + (d.items[0]?.layer1 || '')).join('; ');
+
+          aiResult = await generateAiAnalyses({
+            chartData: JSON.stringify(chart.pillars),
+            scoreData: '自党' + score.ziDang + ' 异党' + score.yiDang + ' 日主' + score.dayStrength,
+            analysisData: '用神' + analysis.yongShen + ' 喜' + analysis.xiShen.join('/') + ' 忌' + analysis.jiShen.join('/'),
+            specialtySummary,
+            currentDayun: curDayun ? curDayun.step.gan + curDayun.step.zhi + ' (' + curDayun.step.startAge + '-' + curDayun.step.endAge + '岁)' : '',
+            nextDayun: nextDayun ? nextDayun.step.gan + nextDayun.step.zhi + ' (' + nextDayun.step.startAge + '-' + nextDayun.step.endAge + '岁)' : '',
+            dayunInteractions: curDayun?.interactions?.join('; ') || '',
+            liunianData: currentYear + '年 ' + liunianGan + liunianZhi + '年',
+            currentDayunContext: curDayun?.overall || '',
+            yongShen: analysis.yongShen,
+            xiShen: analysis.xiShen,
+            jiShen: analysis.jiShen,
+            dayStrength: score.dayStrength,
+          });
+        }
+
         // 预计算结果（类型安全），传给报告生成器避免重复计算
         precomputed = {
+          aiResult,
           specialty,
           yongShenResult: {
             tiaohou: analysis.tiaohou,

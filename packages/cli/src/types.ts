@@ -13,6 +13,7 @@ export interface PrecomputedData {
     yiDang: number;
   };
   specialty: SpecialtyResultV2;
+  aiResult?: any;
 }
 
 /** 附加了预计算数据的 BaziChart */
