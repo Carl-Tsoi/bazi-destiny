@@ -122,17 +122,24 @@ program
           dayZhi: (bazi.pillars as Record<string, {zhi: string}>).日柱?.zhi ?? '',
           monthZhi: (bazi.pillars as Record<string, {zhi: string}>).月柱?.zhi ?? '',
         };
+        const age = new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear();
         const score = scoreChart(chart);
-        const analysis = await analyzeChart(chart, score, {
-          age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(),
-          gender: birthInfo.gender as 'M' | 'F',
+        // 保存L3结果
+        if (options.name) {
+          const layerDir = `output/layers/${options.name}`;
+          fs.mkdirSync(layerDir, { recursive: true });
+          fs.writeFileSync(`${layerDir}/L3-score.json`, JSON.stringify(score, null, 2));
+        }
+        const analysis = await analyzeChart(chart, score, { age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(), gender: birthInfo.gender as 'M' | 'F',
         });
         // 注入 L3+L4 结果（兼容旧报告接口）
+        /*** Save L4 result */ if (options.name) { fs.writeFileSync(`output/layers/${options.name}/L4-analysis.json`, JSON.stringify(analysis, null, 2)); }
         Object.assign(bazi, {
           yongShen: analysis.yongShen,
           dayStrength: score.dayStrength,
           final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
         });
+        /*** Save L3 score to file */ if (options.name) { fs.writeFileSync(`output/layers/${options.name}/L3-score.json`, JSON.stringify(score, null, 2)); }
         // L5: 专项分析（11维规则引擎）
         const specialty = analyzeAllDimensions(chart, score, analysis, {
           gender: birthInfo.gender as 'M' | 'F',
@@ -172,6 +179,7 @@ program
         }
 
         // 预计算结果（类型安全），传给报告生成器避免重复计算
+        /*** Save L5 result */ if (options.name) { fs.writeFileSync(`output/layers/${options.name}/L5-specialty.json`, JSON.stringify(specialty, null, 2)); }
         precomputed = {
           aiResult,
           specialty,
