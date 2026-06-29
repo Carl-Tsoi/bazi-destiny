@@ -91,11 +91,11 @@ const ROOT_ZHI: Record<string, string[]> = {
 
 function getEl(gan: string): string { return WX_MAP[gan] ?? ''; }
 
-/** 判断一天干/藏干是否透出、有根 */
+/** 判断十神是否透出、有根，强度由实得分决定 */
 function analyzeStar(
-  gan: string, pillars: ChartResult['pillars'], allCangGan: Array<{stem:string}>
+  gan: string, pillars: ChartResult['pillars'], allCangGan: Array<{stem:string}>,
+  elementScore: number, totalScore: number,
 ): StarInfo {
-  const el = getEl(gan);
   const touGan = Object.values(pillars).some(p => p.gan === gan);
   const youGen = ROOT_ZHI[gan]?.some(z => Object.values(pillars).some(p => p.zhi === z)) ?? false;
   const cangGan2 = allCangGan.some(h => h.stem === gan);
@@ -104,11 +104,13 @@ function analyzeStar(
     if (p.gan === gan) positions.push(`${k}干`);
     if (p.canggan.some(h => h.stem === gan)) positions.push(`${k}藏`);
   }
+  // 强度由实得分决定：>20%总分→强，>5%→一般，>0→弱，≤0→无
+  const t = totalScore || 1;
   let strength: StarInfo['strength'] = '无';
-  if (touGan && youGen) strength = '强';
-  else if (touGan || youGen || cangGan2) strength = '一般';
-  else if (cangGan2) strength = '弱';
-  return { present: touGan || youGen || cangGan2, touGan, youGen, strength, score: 0, positions };
+  if (elementScore > t * 0.2) strength = '强';
+  else if (elementScore > t * 0.05) strength = '一般';
+  else if (elementScore > 0) strength = '弱';
+  return { present: elementScore > 0 || touGan || youGen || cangGan2, touGan, youGen, strength, score: elementScore, positions };
 }
 
 function analyzePalace(
@@ -217,12 +219,14 @@ export function buildContext(
     }
   }
 
+  const totalScore = Object.values(score.elementScores).reduce((a:number,b:number)=>a+b,0) || 1;
+
   return {
-    officials: {...analyzeStar(officialGan, pillars, allCangGan), score: score.elementScores[getEl(officialGan)] ?? 0},
-    seals: {...analyzeStar(sealGan, pillars, allCangGan), score: score.elementScores[getEl(sealGan)] ?? 0},
-    wealthStars: {...analyzeStar(wealthGan, pillars, allCangGan), score: score.elementScores[getEl(wealthGan)] ?? 0},
-    outputStars: {...analyzeStar(outputGan, pillars, allCangGan), score: score.elementScores[getEl(outputGan)] ?? 0},
-    peers: {...analyzeStar(peerGan, pillars, allCangGan), score: score.elementScores[getEl(peerGan)] ?? 0},
+    officials: analyzeStar(officialGan, pillars, allCangGan, score.elementScores[getEl(officialGan)] ?? 0, totalScore),
+    seals: analyzeStar(sealGan, pillars, allCangGan, score.elementScores[getEl(sealGan)] ?? 0, totalScore),
+    wealthStars: analyzeStar(wealthGan, pillars, allCangGan, score.elementScores[getEl(wealthGan)] ?? 0, totalScore),
+    outputStars: analyzeStar(outputGan, pillars, allCangGan, score.elementScores[getEl(outputGan)] ?? 0, totalScore),
+    peers: analyzeStar(peerGan, pillars, allCangGan, score.elementScores[getEl(peerGan)] ?? 0, totalScore),
 
     spousePalace: analyzePalace(chart.dayZhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
     parentsPalace: analyzePalace(chart.pillars.年柱.zhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
