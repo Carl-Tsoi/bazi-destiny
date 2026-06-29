@@ -2,7 +2,7 @@
  * 八字详细分析报告
  */
 import type { BaziChart } from '@bazi-destiny/core';
-import { determineYongShen, judgeDayun, judgeLiunian, analyzeSpecialty, analyzeInteractions, checkElementFlow } from '@bazi-destiny/knowledge-base';
+import { determineYongShen, judgeDayun, analyzeSpecialty, analyzeInteractions, checkElementFlow, CLIMATE_COEFF } from '@bazi-destiny/knowledge-base';
 import type { YongShenResult } from '@bazi-destiny/knowledge-base';
 import { generateNarratives } from '@bazi-destiny/reports';
 
@@ -191,6 +191,26 @@ export async function generateBaziReport(
   }
   lines.push('');
 
+  // ═══ 二、五行旺衰分析 ═══
+  const scoreData = (precomputed as any)?.score;
+  lines.push('## 二、五行旺衰分析');
+  lines.push('');
+  const wxMap: Record<string,string> = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
+  const dayEl2 = wxMap[bazi.pillars.日柱.gan] ?? '';
+  if (scoreData) {
+    lines.push(`| 项目 | 数值 |`);
+    lines.push(`|------|------|`);
+    lines.push(`| 日主${bazi.pillars.日柱.gan}(${dayEl2})得分 | ${scoreData.dayScore.toFixed(1)} 分 |`);
+    lines.push(`| 自党（日主+印扶） | ${scoreData.ziDang.toFixed(1)} 分 |`);
+    lines.push(`| 异党（官杀+食伤+财） | ${scoreData.yiDang.toFixed(1)} 分 |`);
+    lines.push(`| 判定 | **${scoreData.dayStrength}** |`);
+    const monthZhi3 = bazi.pillars.月柱.zhi;
+    const dayCl = CLIMATE_COEFF[monthZhi3]?.[dayEl2] ?? 1.0;
+    lines.push(`| 月令 | ${monthZhi3}月，${dayEl2}气候系数 ${dayCl} |`);
+    lines.push('');
+  }
+  lines.push('');
+
   // 用神分析（优先使用外部传入的预计算结果）
   const yongShenResult = precomputed?.yongShenResult
     ?? await determineYongShen(
@@ -213,23 +233,29 @@ export async function generateBaziReport(
   if (yongShenResult.final.jiShen.length > 0) lines.push(`**忌神: ${yongShenResult.final.jiShen.join('、')}**`);
   lines.push('');
 
-  // 五行力量
-  const scores = yongShenResult.fuyi.elementScores;
-  const scoreEntries = (Object.entries(scores) as [string, number][]).sort((a, b) => b[1] - a[1]);
-  const clrMap: Record<string, string> = { '木': '#4CAF50', '火': '#F44336', '土': '#8B4513', '金': '#DAA520', '水': '#2196F3' };
-  const scoreLine = scoreEntries.map(([el, v]) => `<span style="color:${clrMap[el] ?? '#000'}">${el}${v}</span>`).join('  ');
-  lines.push('**五行力量**: ' + scoreLine + ` | 日主${yongShenResult.fuyi.dayScore}分`);
-  lines.push('');
-  lines.push('<details>');
-  lines.push('<summary>计分过程</summary>');
-  lines.push('');
-  for (const d of yongShenResult.fuyi.details) {
-    lines.push(`- ${d}`);
-  }
-  lines.push('</details>');
   lines.push('');
 
-  // 大运详析
+  // ═══ 四、十神心性 ═══
+  lines.push('## 四、十神心性');
+  lines.push('');
+  const tenGods = ['正官','七杀','正印','偏印','食神','伤官','正财','偏财','比肩','劫财'];
+  const foundGods: string[] = [];
+  for (const [, p] of Object.entries(bazi.pillars)) {
+    if (p.shishen && p.shishen !== '日主' && !foundGods.includes(p.shishen)) foundGods.push(p.shishen);
+  }
+  const relations: Record<string,string> = {
+    '食神':'才华技艺，温和表达，有艺术品味','伤官':'聪明叛逆，不拘一格，创造力强但易得罪人',
+    '正财':'务实稳重，勤俭持家，对金钱敏感','偏财':'大方豪爽，善抓机遇，消费欲望强',
+    '正官':'正直自律，重视名誉，有管理才能','七杀':'果断刚毅，有冒险精神，竞争意识强',
+    '正印':'温厚仁慈，好学善思，得长辈助','偏印':'精明多谋，独特视角，第六感强',
+    '比肩':'独立自主，平等互助，不善依赖','劫财':'重情重义，竞争意识，社交能力强'
+  };
+  for (const g of foundGods) {
+    if (relations[g]) lines.push(`- **${g}**: ${relations[g]}`);
+  }
+  lines.push('');
+
+  // ═══ 十、大运详析
   const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
   lines.push('## 十、大运详析');
   lines.push('');
@@ -254,9 +280,24 @@ export async function generateBaziReport(
   lines.push('## 专项分析');
   lines.push('');
 
+  const chapterMap: Record<string,string> = {
+    '性格':'五','事业':'六','财运':'六','婚姻':'七','健康':'八',
+    '子女':'九','父母':'九','人际':'九','兄弟':'九','田宅':'九','晚年':'九'
+  };
+  let lastChapter = '';
+
   if (specialtyV2?.dimensions) {
     for (const dim of specialtyV2.dimensions) {
       if (!dim.items || dim.items.length === 0) continue;
+      const ch = chapterMap[dim.dimension] || '';
+      if (ch && ch !== lastChapter) {
+        const titles: Record<string,string> = {
+          '五':'性格分析','六':'事业财运','七':'婚姻家庭','八':'健康提示','九':'六亲简析'
+        };
+        lines.push(`## ${ch}、${titles[ch] || dim.dimension}`);
+        lines.push('');
+        lastChapter = ch;
+      }
       lines.push(`### ${dim.dimension}`);
       for (const item of dim.items) {
         lines.push(`- **${item.layer1}**`);
@@ -282,7 +323,37 @@ export async function generateBaziReport(
     lines.push('');
   }
 
-    // 古籍参考
+    // ═══ 十一、趋吉避凶 ═══
+  lines.push('## 十一、趋吉避凶');
+  lines.push('');
+  const directionMap: Record<string,string> = {'木':'东方','火':'南方','土':'中央/本地','金':'西方','水':'北方'};
+  const colorMap: Record<string,string> = {'木':'绿色/青色','火':'红色/紫色','土':'黄色/棕色','金':'白色/金色','水':'黑色/蓝色'};
+  const yEl = yongShenResult.final.yongShen;
+  if (yEl) {
+    lines.push(`- **有利行业**: ${yEl}属性行业（见事业财运章节）`);
+    lines.push(`- **有利方位**: ${directionMap[yEl] || yEl}方`);
+    lines.push(`- **有利颜色**: ${colorMap[yEl] || yEl}`);
+    lines.push(`- **贵人属相**: ${yEl === '木' ? '虎/兔' : yEl === '火' ? '蛇/马' : yEl === '土' ? '龙/狗/牛/羊' : yEl === '金' ? '猴/鸡' : '鼠/猪'}`);
+    lines.push('');
+  }
+
+  // ═══ 附录：计分过程 ═══
+  const scores = yongShenResult.fuyi.elementScores;
+  const scoreEntries = (Object.entries(scores) as [string, number][]).sort((a, b) => b[1] - a[1]);
+  const clrMap: Record<string, string> = { '木': '#4CAF50', '火': '#F44336', '土': '#8B4513', '金': '#DAA520', '水': '#2196F3' };
+  lines.push('<details>');
+  lines.push('<summary>附录：五行计分详情</summary>');
+  lines.push('');
+  const scoreLine = scoreEntries.map(([el, v]) => `<span style="color:${clrMap[el] ?? '#000'}">${el}${v.toFixed(1)}</span>`).join('  ');
+  lines.push(`**五行力量**: ${scoreLine} | 日主${yongShenResult.fuyi.dayScore.toFixed(1)}分`);
+  lines.push('');
+  for (const d of yongShenResult.fuyi.details) {
+    lines.push(`- ${d}`);
+  }
+  lines.push('</details>');
+  lines.push('');
+
+  // 古籍参考
   const classicalRefs = (yongShenResult.engines ?? [])
     .flatMap((e: any) => (e.diagnostics || []).map((d: string) => ({ engine: e.name, text: d })))
     .filter((r: any) => /穷通宝鉴|滴天髓|子平真诠|神峰通考|渊海子平|三命通会/.test(r.text));
