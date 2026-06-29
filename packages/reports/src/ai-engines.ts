@@ -58,16 +58,28 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
 
 // ── 核心函数 ─────────────────────────────────────
 
-async function callClaude(systemPrompt: string, userPrompt: string): Promise<string> {
+async function callClaude(prompt: string): Promise<string> {
+  const model = process.env.BAZI_LLM_MODEL || 'claude-sonnet-4-6';
   const msg = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 600,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
+    model,
+    max_tokens: 1024,
+    temperature: 0.3,
+    system: `你是一位专业八字命理师。
+
+【核心铁律】
+1. 只讨论命盘中实际存在的干支。四柱天干地支是按【命盘数据】列出的，不得臆造、推断或引用不存在的天干地支。
+2. 【用神分析参考】中引用的古籍内容（如"首选甲""次选丙"等）是古典理论的推荐，不代表命盘中有这些天干。切勿将其当作命盘实际存在的元素来分析。
+3. 【系统判断结果】是用神/喜忌/强弱的确定性结论，必须以此为准，不得推翻或重新判断。
+4. 你的任务是：基于系统结论和命盘实际数据，用流畅中文写出有洞察的分析。输出具体，不套话，不加前缀。`,
+    messages: [{ role: 'user', content: prompt }],
   });
-  const block = msg.content[0];
-  return block?.type === 'text' ? block.text : '';
+
+  for (const block of msg.content) {
+    if (block.type === 'text') return block.text;
+  }
+  return '';
 }
+
 
 function formatList(items: string[]): string {
   return items.join('、');
@@ -84,7 +96,7 @@ async function generateYuanju(input: AiInput): Promise<string> {
     specialtySummary: input.specialtySummary,
     wordLimit: p.wordLimit,
   });
-  return callClaude(p.systemPrompt, userPrompt);
+  return callClaude(p.systemPrompt + '\n\n' + userPrompt);
 }
 
 async function generateDayun(input: AiInput): Promise<string> {
@@ -99,7 +111,7 @@ async function generateDayun(input: AiInput): Promise<string> {
     dayunInteractions: input.dayunInteractions,
     wordLimit: p.wordLimit,
   });
-  return callClaude(p.systemPrompt, userPrompt);
+  return callClaude(p.systemPrompt + '\n\n' + userPrompt);
 }
 
 async function generateLiunian(input: AiInput): Promise<string> {
@@ -113,7 +125,7 @@ async function generateLiunian(input: AiInput): Promise<string> {
     currentDayunContext: input.currentDayunContext,
     wordLimit: p.wordLimit,
   });
-  return callClaude(p.systemPrompt, userPrompt);
+  return callClaude(p.systemPrompt + '\n\n' + userPrompt);
 }
 
 /** 并行调用三个 AI 分析，返回结果 */

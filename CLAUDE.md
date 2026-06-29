@@ -83,7 +83,7 @@ npx tsx packages/knowledge-base/src/__tests__/specialty-engines.test.ts    # 单
 
 ## 当前待办
 
-1. AI渲染修复 — --ai时报告不显示AI内容，疑似precomputed传递问题
+
 
 
 ## 编码规范
