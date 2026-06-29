@@ -1,122 +1,73 @@
 /**
- * 专项引擎: 性格 (1/11)
- *
- * 规则从 specialty/content/personality.json 加载，
- * 修改描述只需改 JSON，无需动代码。
+ * 专项引擎: 性格 (1/11) v2: 喜忌双轨
  */
-
 import type { SharedContext } from './shared/context.js';
-import type { AnalysisItem } from './types.js';
-import type { SpecContext } from './types.js';
+import type { AnalysisItem, SpecContext } from './types.js';
+import { readFileSync } from 'fs'; import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+let _c: any = null; function C(): any { if(!_c) _c=JSON.parse(readFileSync(join(__dirname,'content','personality.json'),'utf-8')); return _c; }
 
-// ── 加载配置文件 ──────────────────────────────────
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-function loadContent(): any {
-  const path = join(__dirname, 'content', 'personality.json');
-  return JSON.parse(readFileSync(path, 'utf-8'));
+const ORDER = ['木','火','土','金','水'];
+function elIsJi(dayIdx: number, offset: number, ctx: SharedContext): boolean {
+  const el = ORDER[(dayIdx + offset) % 5];
+  return ctx.jiShen.includes(el);
+}
+function elIsYong(dayIdx: number, offset: number, ctx: SharedContext): boolean {
+  const el = ORDER[(dayIdx + offset) % 5];
+  return ctx.xiShen.includes(el);
 }
 
-// 旧版兼容（待所有引擎迁移后移除）
-export function personalityEngine(ctx: SpecContext): string[] {
-  const p: string[] = [];
+export function personalityEngine(ctx:SpecContext):string[]{
+  const p:string[]=[];
   p.push(`日主${ctx.dayGan}（${ctx.dayEl}）：身${ctx.dayStrength}，格局${ctx.pattern}。`);
-  if (ctx.isStrong) p.push('身强自主果断。');
-  else if (ctx.isWeak) p.push('身弱谨慎谦虚，善借力。');
-  if (ctx.foodHurtStars.length>=2) p.push('食伤旺，才华外露。');
-  if (ctx.yins.length>=2) p.push('印星重重，喜思考有内涵。');
-  if (ctx.killers.length>0) p.push('七杀在命，刚烈果断。');
-  if (ctx.biJie.length>=3) p.push('比劫林立，重义气喜交友。');
   return p;
 }
 
-// ── 新版引擎 ──────────────────────────────────────
+export function analyzePersonality(ctx:SharedContext):AnalysisItem[]{
+  const items:AnalysisItem[]=[];
+  const dg=ctx.dayGan, dayIdx=ORDER.indexOf(ctx.dayEl);
 
-/** 从 JSON 取模板，替换占位符 {dayEl} {dayGan} 等 */
-function tpl(key: string, vars?: Record<string, string>): string {
-  const content = loadContent();
-  const keys = key.split('.');
-  let val: any = content;
-  for (const k of keys) val = val?.[k];
-  if (typeof val !== 'string') return '';
-  if (vars) {
-    for (const [k, v] of Object.entries(vars)) {
-      val = val.replace(`{${k}}`, v);
-    }
-  }
-  return val;
-}
+  // 1. 日干体性（不依赖喜忌）
+  const trait=C().dayGanTraits?.[dg];
+  if(trait) items.push({level:'确定',layer1:trait.l1,layer2:trait.l2,layer3:trait.l3});
 
-export function analyzePersonality(ctx: SharedContext): AnalysisItem[] {
-  const items: AnalysisItem[] = [];
-  const dg = ctx.dayGan;
-
-  // 1. 日干体性
-  const traitL1 = tpl(`dayGanTraits.${dg}.l1`);
-  if (traitL1) {
-    items.push({
-      level: '确定',
-      layer1: traitL1,
-      layer2: tpl(`dayGanTraits.${dg}.l2`),
-      layer3: tpl(`dayGanTraits.${dg}.l3`),
-    });
+  // 2. 身强/弱 + 喜忌
+  const jiCount=ctx.jiShen.length, yongCount=ctx.xiShen.length;
+  if(ctx.dayStrength==='身强'){
+    const t=jiCount>yongCount?C().strongJi:C().strongYong;
+    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
+  } else {
+    const t=jiCount>yongCount?C().weakJi:C().weakYong;
+    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
 
-  // 2. 身强/身弱
-  const swKey = ctx.dayStrength === '身强' ? '强' : '弱';
-  items.push({
-    level: '确定',
-    layer1: tpl(`strongWeak.${swKey}.l1`, { dayEl: ctx.dayEl }),
-    layer2: tpl(`strongWeak.${swKey}.l2`),
-    layer3: tpl(`strongWeak.${swKey}.l3`),
-  });
-
-  // 3. 食伤 → 才华表达
-  const osKey = ctx.outputStars.strength === '强' ? '强' : ctx.outputStars.strength === '无' ? '无' : '';
-  if (osKey) {
-    items.push({
-      level: osKey === '强' ? '确定' : '参考',
-      layer1: tpl(`outputStars.${osKey}.l1`),
-      layer2: tpl(`outputStars.${osKey}.l2`),
-      layer3: tpl(`outputStars.${osKey}.l3`),
-    });
+  // 3. 官杀 → 自律/冲动 (offset 3 =克日主)
+  if(ctx.officials.strength==='强'||ctx.officials.strength==='一般'){
+    const ji=elIsJi(dayIdx,3,ctx), t=ji?C().officialsJi:C().officialsYong;
+    if(t) items.push({level:ji?'确定':'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
 
-  // 4. 官杀
-  if (ctx.officials.strength === '强') {
-    items.push({
-      level: '确定',
-      layer1: tpl('officials.强.l1'),
-      layer2: tpl('officials.强.l2'),
-      layer3: tpl('officials.强.l3'),
-    });
+  // 4. 食伤 → 才华/叛逆 (offset 1 =日主生)
+  if(ctx.outputStars.strength==='强'||ctx.outputStars.strength==='一般'){
+    const ji=elIsJi(dayIdx,1,ctx), t=ji?C().outputJi:C().outputYong;
+    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
 
-  // 5. 印星
-  if (ctx.seals.strength === '强') {
-    items.push({
-      level: '确定',
-      layer1: tpl('seals.强.l1'),
-      layer2: tpl('seals.强.l2'),
-      layer3: tpl('seals.强.l3'),
-    });
+  // 5. 印星 → 学习/依赖 (offset 4 =生日主)
+  if(ctx.seals.strength==='强'||ctx.seals.strength==='一般'){
+    const ji=elIsJi(dayIdx,4,ctx), t=ji?C().sealsJi:C().sealsYong;
+    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
 
-  // 6. 五行缺失
-  for (const el of ctx.elementBalance.missing) {
-    const l1 = tpl(`missingElements.${el}.l1`);
-    if (l1) {
-      items.push({
-        level: '参考',
-        layer1: l1,
-        layer2: tpl(`missingElements.${el}.l2`),
-        layer3: tpl(`missingElements.${el}.l3`),
-      });
-    }
+  // 6. 比劫 → 社交/损友 (offset 0 =同)
+  if(ctx.peers.strength==='强'||ctx.peers.strength==='一般'){
+    const ji=elIsJi(dayIdx,0,ctx), t=ji?C().peersJi:C().peersYong;
+    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
+  }
+
+  // 7. 五行缺失
+  for(const el of ctx.elementBalance.missing){
+    const t=C().missingElements?.[el]; if(t) items.push({level:'参考',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
 
   return items;
