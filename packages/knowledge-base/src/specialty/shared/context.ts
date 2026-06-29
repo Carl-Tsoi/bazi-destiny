@@ -252,7 +252,11 @@ export function buildContext(
     seals: mkStar(sealGan),
     wealthStars: mkStar(wealthGan),
     outputStars: mkStar(outputGan),
-    peers: peerGan ? analyzeStar(peerGan, pillars, allCangGan, peerScore, totalScore) : { present: peerScore > 0, touGan: false, youGen: false, strength: (peerScore > totalScore*0.2 ? '强' : peerScore > totalScore*0.05 ? '一般' : peerScore > 0 ? '弱' : '无') as StarInfo['strength'], score: peerScore, positions: [] as string[] },
+    peers: (() => {
+      if (!peerGan) return { present: false, touGan: false, youGen: false, strength: '无' as const, score: 0, positions: [] as string[] };
+      const star = analyzeStar(peerGan, pillars, allCangGan, peerScore, totalScore);
+      return { ...star, present: peerScore > 0, strength: peerScore > totalScore*0.2 ? '强' : peerScore > totalScore*0.05 ? '一般' : peerScore > 0 ? '弱' : '无' };
+    })(),
 
     spousePalace: analyzePalace(chart.dayZhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
     parentsPalace: analyzePalace(chart.pillars.年柱.zhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
