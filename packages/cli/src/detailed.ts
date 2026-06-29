@@ -254,23 +254,6 @@ export async function generateBaziReport(
   }
   lines.push('');
 
-  // ═══ 十、大运详析
-  const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
-  lines.push('## 十一、大运详析');
-  lines.push('');
-  lines.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
-  lines.push('|------|------|------------|------------|-----------|');
-  for (const d of dayunJudgments) {
-    lines.push(`| ${d.step.startAge}-${d.step.endAge} | ${d.step.gan}${d.step.zhi} | ${d.ganJudgment || ''} | ${d.zhiJudgment || ''} | ${d.interactions.join('；') || ''} |`);
-  }
-  lines.push('');
-
-  const currentDayun = dayunJudgments.find(d => d.step.startAge <= age && d.step.endAge >= age);
-  if (currentDayun) {
-    lines.push(`**当前大运**: ${currentDayun.step.startAge}-${currentDayun.step.endAge}岁 ${currentDayun.step.gan}${currentDayun.step.zhi}（${currentDayun.ganJudgment}）`);
-    lines.push('');
-  }
-
   // 专项分析 — 优先使用新版引擎结果（L5预计算），fallback旧版
   const specialtyV2 = (precomputed as any)?.specialty;
   const birthYear = birthInfo ? new Date(birthInfo.datetime).getFullYear() : 1980;
@@ -322,8 +305,27 @@ export async function generateBaziReport(
     lines.push('');
   }
 
-    // ═══ 十一、趋吉避凶 ═══
-  lines.push('## 十二、趋吉避凶');
+    // ═══ 十、大运详析
+  const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
+  lines.push('## 十、大运详析');
+  lines.push('');
+  lines.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
+  lines.push('|------|------|------------|------------|-----------|');
+  for (const d of dayunJudgments) {
+    lines.push(`| ${d.step.startAge}-${d.step.endAge} | ${d.step.gan}${d.step.zhi} | ${d.ganJudgment || ''} | ${d.zhiJudgment || ''} | ${d.interactions.join('；') || ''} |`);
+  }
+  lines.push('');
+
+  const currentDayun = dayunJudgments.find(d => d.step.startAge <= age && d.step.endAge >= age);
+  if (currentDayun) {
+    lines.push(`**当前大运**: ${currentDayun.step.startAge}-${currentDayun.step.endAge}岁 ${currentDayun.step.gan}${currentDayun.step.zhi}（${currentDayun.ganJudgment}）`);
+    lines.push('');
+  }
+
+
+
+  // ═══ 十一、趋吉避凶 ═══
+  lines.push('## 十一、趋吉避凶');
   lines.push('');
   const directionMap: Record<string,string> = {'木':'东方','火':'南方','土':'中央/本地','金':'西方','水':'北方'};
   const colorMap: Record<string,string> = {'木':'绿色/青色','火':'红色/紫色','土':'黄色/棕色','金':'白色/金色','水':'黑色/蓝色'};
