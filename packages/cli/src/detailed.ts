@@ -235,25 +235,6 @@ export async function generateBaziReport(
 
   lines.push('');
 
-  // ═══ 四、十神分布 ═══
-  lines.push('## 十神分布');
-  lines.push('');
-  const wxMap3: Record<string,string> = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
-  const ORDER3 = ['木','火','土','金','水'];
-  const dayEl3 = wxMap3[bazi.pillars.日柱.gan] ?? '';
-  const dayIdx3 = ORDER3.indexOf(dayEl3);
-  const shishenEl = (ss:string) => { if(ss.includes('比')||ss.includes('劫')) return dayEl3; if(ss.includes('食')||ss.includes('伤')) return ORDER3[(dayIdx3+1)%5]; if(ss.includes('财')) return ORDER3[(dayIdx3+2)%5]; if(ss.includes('官')||ss.includes('杀')) return ORDER3[(dayIdx3+3)%5]; if(ss.includes('印')) return ORDER3[(dayIdx3+4)%5]; return ''; };
-  const jiShen = yongShenResult.final.jiShen;
-  const xiShen = yongShenResult.final.xiShen;
-  lines.push('| 柱 | 天干 | 十神 | 五行 | 喜忌 |');
-  lines.push('|------|------|------|------|------|');
-  for (const [k, p] of Object.entries(bazi.pillars)) {
-    const el = shishenEl(p.shishen);
-    const tag = !el ? '' : jiShen.includes(el) ? '忌' : xiShen.includes(el) ? '喜' : '—';
-    lines.push(`| ${k} | ${colored(p.gan)} | ${p.shishen} | ${el||'—'} | ${tag} |`);
-  }
-  lines.push('');
-
   // 专项分析 — 优先使用新版引擎结果（L5预计算），fallback旧版
   const specialtyV2 = (precomputed as any)?.specialty;
   const birthYear = birthInfo ? new Date(birthInfo.datetime).getFullYear() : 1980;
