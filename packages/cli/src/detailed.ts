@@ -282,7 +282,24 @@ export async function generateBaziReport(
     lines.push('');
   }
 
-    // AI 分析章节（--ai 启用时，优先使用预计算结果）
+    // 古籍参考
+  const classicalRefs = (yongShenResult.engines ?? [])
+    .flatMap((e: any) => (e.diagnostics || []).map((d: string) => ({ engine: e.name, text: d })))
+    .filter((r: any) => /穷通宝鉴|滴天髓|子平真诠|神峰通考|渊海子平|三命通会/.test(r.text));
+  if (classicalRefs.length > 0) {
+    lines.push('## 古籍参考');
+    lines.push('');
+    const sources = ['穷通宝鉴','滴天髓','子平真诠','神峰通考','渊海子平','三命通会'];
+    for (const src of sources) {
+      const refs = classicalRefs.filter((r: any) => r.text.includes(src));
+      if (refs.length === 0) continue;
+      lines.push(`**${src}**`);
+      for (const r of refs) lines.push(`- ${r.text}`);
+      lines.push('');
+    }
+  }
+
+  // AI 分析章节（--ai 启用时，优先使用预计算结果）
   if (!birthInfo?.skipAi) {
     const aiData = (precomputed as any)?.aiResult;
     if (aiData?.yuanju) {
