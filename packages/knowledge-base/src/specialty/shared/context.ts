@@ -134,11 +134,20 @@ function getPalaceTenGod(zhiEl: string, dayEl: string): string {
   return names[diff] ?? '';
 }
 
-function analyzeBalance(scores: Record<string, number>): ElementBalance {
+function analyzeBalance(scores: Record<string, number>, pillars: ChartResult['pillars']): ElementBalance {
   const entries = Object.entries(scores).filter(([,v])=>v>0);
   if (entries.length === 0) return { missing: ELEMENT_ORDER, excess: [], weak: [], scores };
   const avg = entries.reduce((s,[,v])=>s+v,0) / entries.length;
-  const missing = ELEMENT_ORDER.filter(e => (scores[e]??0) <= 0);
+  // 判断"真正缺失"：分数≤0且八字中无此五行透干或出现
+  const appearedElements = new Set<string>();
+  const wxMap: Record<string,string> = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
+  const zwxMap: Record<string,string> = {'子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'};
+  for (const p of Object.values(pillars)) {
+    appearedElements.add(wxMap[p.gan] ?? '');
+    appearedElements.add(zwxMap[p.zhi] ?? '');
+    for (const h of p.canggan) appearedElements.add(wxMap[h.stem] ?? '');
+  }
+  const missing = ELEMENT_ORDER.filter(e => (scores[e]??0) <= 0 && !appearedElements.has(e));
   const excess = ELEMENT_ORDER.filter(e => (scores[e]??0) > avg * 2);
   const weak = ELEMENT_ORDER.filter(e => {
     const v = scores[e]??0;
@@ -219,7 +228,7 @@ export function buildContext(
     childrenPalace: analyzePalace(chart.pillars.时柱.zhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
     siblingsPalace: analyzePalace(chart.pillars.月柱.zhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
 
-    elementBalance: analyzeBalance(score.elementScores),
+    elementBalance: analyzeBalance(score.elementScores, chart.pillars),
 
     dayGan: chart.dayGan,
     dayEl,
