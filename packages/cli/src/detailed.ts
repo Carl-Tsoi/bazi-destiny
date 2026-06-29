@@ -171,8 +171,8 @@ export async function generateBaziReport(
   function colored(c: string) { return `<span style="color:${wxColor[c] ?? '#000'}">${c}</span>`; }
   const pillarOrder = ['时柱', '日柱', '月柱', '年柱'] as const;
 
-  // 命盘
-  lines.push('## 命盘');
+  // ═══ 一、排盘总览 ═══
+  lines.push('## 一、排盘总览');
   lines.push('');
   lines.push(`**${bazi.pattern || ''}** | 日主: ${colored(bazi.pillars.日柱.gan)}${colored(bazi.pillars.日柱.zhi)} | 起运${bazi.dayun.startAgeYears}岁${bazi.dayun.direction === 'forward' ? '顺行' : '逆行'}`);
   lines.push('');
@@ -197,7 +197,7 @@ export async function generateBaziReport(
       bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, bazi.pillars.日柱.gan,
     );
 
-  lines.push('## 用神分析');
+  lines.push('## 三、用神喜忌详解');
   lines.push('');
   lines.push('| 分析维度 | 类型 | 用神 | 诊断 |');
   lines.push('|----------|------|------|------|');
@@ -231,7 +231,7 @@ export async function generateBaziReport(
 
   // 大运详析
   const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
-  lines.push('## 大运详析');
+  lines.push('## 十、大运详析');
   lines.push('');
   lines.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
   lines.push('|------|------|------------|------------|-----------|');
@@ -287,7 +287,7 @@ export async function generateBaziReport(
     .flatMap((e: any) => (e.diagnostics || []).map((d: string) => ({ engine: e.name, text: d })))
     .filter((r: any) => /穷通宝鉴|滴天髓|子平真诠|神峰通考|渊海子平|三命通会/.test(r.text));
   if (classicalRefs.length > 0) {
-    lines.push('## 古籍参考');
+    lines.push('## 附录：古籍参考');
     lines.push('');
     const sources = ['穷通宝鉴','滴天髓','子平真诠','神峰通考','渊海子平','三命通会'];
     for (const src of sources) {
