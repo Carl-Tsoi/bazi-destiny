@@ -220,13 +220,16 @@ export function buildContext(
   }
 
   const totalScore = Object.values(score.elementScores).reduce((a:number,b:number)=>a+b,0) || 1;
+  const mkStar = (gan:string) => gan
+    ? analyzeStar(gan, pillars, allCangGan, score.elementScores[getEl(gan)] ?? 0, totalScore)
+    : { present: false, touGan: false, youGen: false, strength: '无' as const, score: 0, positions: [] as string[] };
 
   return {
-    officials: analyzeStar(officialGan, pillars, allCangGan, score.elementScores[getEl(officialGan)] ?? 0, totalScore),
-    seals: analyzeStar(sealGan, pillars, allCangGan, score.elementScores[getEl(sealGan)] ?? 0, totalScore),
-    wealthStars: analyzeStar(wealthGan, pillars, allCangGan, score.elementScores[getEl(wealthGan)] ?? 0, totalScore),
-    outputStars: analyzeStar(outputGan, pillars, allCangGan, score.elementScores[getEl(outputGan)] ?? 0, totalScore),
-    peers: analyzeStar(peerGan, pillars, allCangGan, score.elementScores[getEl(peerGan)] ?? 0, totalScore),
+    officials: mkStar(officialGan),
+    seals: mkStar(sealGan),
+    wealthStars: mkStar(wealthGan),
+    outputStars: mkStar(outputGan),
+    peers: mkStar(peerGan),
 
     spousePalace: analyzePalace(chart.dayZhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
     parentsPalace: analyzePalace(chart.pillars.年柱.zhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
