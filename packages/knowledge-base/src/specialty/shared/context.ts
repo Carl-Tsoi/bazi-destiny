@@ -14,6 +14,7 @@ export interface StarInfo {
  touGan: boolean;
  youGen: boolean;
   strength: '强' | '一般' | '弱' | '无';
+  score: number;
   positions: string[];
 }
 
@@ -107,7 +108,7 @@ function analyzeStar(
   if (touGan && youGen) strength = '强';
   else if (touGan || youGen || cangGan2) strength = '一般';
   else if (cangGan2) strength = '弱';
-  return { present: touGan || youGen || cangGan2, touGan, youGen, strength, positions };
+  return { present: touGan || youGen || cangGan2, touGan, youGen, strength, score: 0, positions };
 }
 
 function analyzePalace(
@@ -217,11 +218,11 @@ export function buildContext(
   }
 
   return {
-    officials: analyzeStar(officialGan, pillars, allCangGan),
-    seals: analyzeStar(sealGan, pillars, allCangGan),
-    wealthStars: analyzeStar(wealthGan, pillars, allCangGan),
-    outputStars: analyzeStar(outputGan, pillars, allCangGan),
-    peers: analyzeStar(peerGan, pillars, allCangGan),
+    officials: {...analyzeStar(officialGan, pillars, allCangGan), score: score.elementScores[getEl(officialGan)] ?? 0},
+    seals: {...analyzeStar(sealGan, pillars, allCangGan), score: score.elementScores[getEl(sealGan)] ?? 0},
+    wealthStars: {...analyzeStar(wealthGan, pillars, allCangGan), score: score.elementScores[getEl(wealthGan)] ?? 0},
+    outputStars: {...analyzeStar(outputGan, pillars, allCangGan), score: score.elementScores[getEl(outputGan)] ?? 0},
+    peers: {...analyzeStar(peerGan, pillars, allCangGan), score: score.elementScores[getEl(peerGan)] ?? 0},
 
     spousePalace: analyzePalace(chart.dayZhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
     parentsPalace: analyzePalace(chart.pillars.年柱.zhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
