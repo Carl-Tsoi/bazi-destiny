@@ -90,3 +90,11 @@ npx tsx packages/knowledge-base/src/__tests__/specialty-engines.test.ts    # 单
 
 见 `docs/research/coding-standards.md`
 核心：内容外置JSON、禁as any、提交前回归、函数≤40行、禁中文变量名
+
+## 工作流程
+
+每次完成任务后更新此文件：
+- 修改「当前待办」章节
+- 如新增文件/模块，更新「目录结构」
+- 如新增设计决策，更新「关键设计决策」
+- 如新增测试数据，更新「测试」章节
