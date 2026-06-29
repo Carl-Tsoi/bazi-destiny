@@ -6,6 +6,7 @@
  */
 
 import type { ChartResult, ScoreResult, AnalysisResult } from '../../analysis/types.js';
+import { getClimate } from '../../scoring/climate.js';
 
 // ── 标准化返回类型 ──────────────────────────────────
 
@@ -87,6 +88,10 @@ const ROOT_ZHI: Record<string, string[]> = {
   '戊':['辰','戌','丑','未','巳','午'],'己':['辰','戌','丑','未','巳','午'],
   '庚':['申','酉','辰','戌','丑'],'辛':['申','酉','辰','戌','丑'],
   '壬':['亥','子','申','辰','丑'],'癸':['亥','子','申','辰','丑'],
+};
+const ROOT_LEVELS: Record<string, number> = {
+  '寅':3,'卯':3,'巳':3,'午':3,'申':3,'酉':3,'亥':3,'子':3,
+  '辰':2,'戌':2,'丑':2,'未':2,
 };
 
 function getEl(gan: string): string { return WX_MAP[gan] ?? ''; }
@@ -194,6 +199,24 @@ export function buildContext(
   const outputGan = findGanByShishen(['食神','伤官']);
   const peerGan = findGanByShishen(['比肩','劫财']);
 
+  // 比劫分=同五行总分-日主天干原始分（日主自己的分不算比劫）
+  const dayElScore = score.elementScores[dayEl] ?? 0;
+  const cl = (el:string) => getClimate(chart.monthZhi, el);
+  // 根气分
+  let rawRoot = 0;
+  for (const z of Object.values(pillars).map(p=>p.zhi)) {
+    if (ROOT_ZHI[dayGan]?.includes(z)) rawRoot += ROOT_LEVELS[z] ?? 1;
+  }
+  for (const h of allCangGan) { if (h.stem === dayGan) rawRoot += 1; }
+  const dayGanBaseScore = 3 * cl(dayEl) + rawRoot * cl(dayEl);
+  // 月令得气
+  const monthIdx2 = ELEMENT_ORDER.indexOf(ZWX_MAP[chart.monthZhi] ?? '');
+  const dayStemIdx = ELEMENT_ORDER.indexOf(dayEl);
+  const monthBranchScore2 = 5 * cl(ZWX_MAP[chart.monthZhi] ?? '');
+  const deQi2 = (monthIdx2 + 1) % 5 === dayStemIdx ? Math.floor(monthBranchScore2 / 2) : 0;
+  const dayOwnScore = dayGanBaseScore + deQi2;
+  const peerScore = Math.max(0, dayElScore - dayOwnScore);
+
   // 收集刑冲会合
   const clashes: string[] = [];
   const combos: string[] = [];
@@ -229,7 +252,7 @@ export function buildContext(
     seals: mkStar(sealGan),
     wealthStars: mkStar(wealthGan),
     outputStars: mkStar(outputGan),
-    peers: mkStar(peerGan),
+    peers: peerGan ? analyzeStar(peerGan, pillars, allCangGan, peerScore, totalScore) : { present: peerScore > 0, touGan: false, youGen: false, strength: (peerScore > totalScore*0.2 ? '强' : peerScore > totalScore*0.05 ? '一般' : peerScore > 0 ? '弱' : '无') as StarInfo['strength'], score: peerScore, positions: [] as string[] },
 
     spousePalace: analyzePalace(chart.dayZhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
     parentsPalace: analyzePalace(chart.pillars.年柱.zhi, dayEl, analysis.yongShen, analysis.jiShen, clashes, combos),
