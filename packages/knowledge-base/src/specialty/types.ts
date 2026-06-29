@@ -1,4 +1,15 @@
 /** Shared types for specialty engines */
+
+// ── 新版三层分析输出 ──
+export interface AnalysisItem {
+  level: '确定' | '参考';
+  layer1: string;   // 命理判断
+  layer2: string;   // 对命主影响
+  layer3: string;   // 行动建议
+  citation?: string; // 古籍引证
+}
+
+// ── 旧版兼容类型 ──
 export interface Pillar { gan:string;zhi:string;shishen:string;canggan:Array<{stem:string;tenGod:string}>; }
 export interface SpecContext {
   ps: Record<string, Pillar>; dayGan: string; dayEl: string; dayZhi: string;

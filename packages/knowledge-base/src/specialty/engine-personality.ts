@@ -1,27 +1,123 @@
-/** 性格引擎 — 古籍天干性情+强弱+十神组合 */
+/**
+ * 专项引擎: 性格 (1/11)
+ *
+ * 规则从 specialty/content/personality.json 加载，
+ * 修改描述只需改 JSON，无需动代码。
+ */
+
+import type { SharedContext } from './shared/context.js';
+import type { AnalysisItem } from './types.js';
 import type { SpecContext } from './types.js';
 
-const GAN_P: Record<string,string> = {
-  甲:'甲木参天，刚毅正直，领导型人格。《滴天髓》"甲木参天，脱胎要火"，需磨练方成大器。但过刚则固执。',
-  乙:'乙木柔韧，善交际应酬，适应力强。如藤萝系甲，可塑性高。但易依赖他人。',
-  丙:'丙火如日，热情开朗，感染力强。《穷通宝鉴》"丙火猛烈，欺霜侮雪"。气场大但急躁冲动。',
-  丁:'丁火如灯，心思缜密，观察敏锐。如烛照幽微，善于发现机会。但多疑犹豫。',
-  戊:'戊土厚重，诚信稳健，包容担当。《滴天髓》"戊土固重，既中且正"。是可靠的中流砥柱。',
-  己:'己土细腻，善协调沟通。田园之土滋养万物。但格局偏小，易斤斤计较。',
-  庚:'庚金刚健，果敢重义，执行力强。斧钺之金能决断大事。但刚极易折，好斗冲动。',
-  辛:'辛金珠玉，追求完美有品位。《滴天髓》"辛金软弱，温润而清"。但过于挑剔，人际紧张。',
-  壬:'壬水通河，豁达善变，不拘一格。江河奔流顺势而为。但散漫无纪律，三分钟热度。',
-  癸:'癸水至阴，内敛善谋，直觉敏锐。涓涓细流以柔克刚。但城府深，多思伤身。',
-};
+// ── 加载配置文件 ──────────────────────────────────
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
+function loadContent(): any {
+  const path = join(__dirname, 'content', 'personality.json');
+  return JSON.parse(readFileSync(path, 'utf-8'));
+}
+
+// 旧版兼容（待所有引擎迁移后移除）
 export function personalityEngine(ctx: SpecContext): string[] {
   const p: string[] = [];
-  p.push(`日主${ctx.dayGan}（${ctx.dayEl}）：${GAN_P[ctx.dayGan]??'中和之性。'}`);
-  if (ctx.isStrong) p.push('身强自主果断。但过强则自我中心，不善妥协，人际易有摩擦。');
-  else if (ctx.isWeak) p.push('身弱谨慎谦虚，善借力借势。但过弱则缺乏自信，难坚持己见。');
-  if (ctx.foodHurtStars.length>=2) p.push('食伤旺，才华外露，创造力强。但泄身太过则言语尖锐，易得罪人，精力分散难专注。');
-  if (ctx.yins.length>=2) p.push(`印星重重（${ctx.yins.map(y=>y.shishen).join('、')}），喜思考，有内涵修养。但印过旺则依赖心重，理论脱离实际。`);
-  if (ctx.killers.length>0) p.push('七杀在命，刚烈果断，有冒险精神。若杀无制则暴躁冲动，易惹是非。');
-  if (ctx.biJie.length>=3) p.push('比劫林立，重义气喜交友。但争财好面子，花钱大手大脚，难存钱。');
+  p.push(`日主${ctx.dayGan}（${ctx.dayEl}）：身${ctx.dayStrength}，格局${ctx.pattern}。`);
+  if (ctx.isStrong) p.push('身强自主果断。');
+  else if (ctx.isWeak) p.push('身弱谨慎谦虚，善借力。');
+  if (ctx.foodHurtStars.length>=2) p.push('食伤旺，才华外露。');
+  if (ctx.yins.length>=2) p.push('印星重重，喜思考有内涵。');
+  if (ctx.killers.length>0) p.push('七杀在命，刚烈果断。');
+  if (ctx.biJie.length>=3) p.push('比劫林立，重义气喜交友。');
   return p;
+}
+
+// ── 新版引擎 ──────────────────────────────────────
+
+/** 从 JSON 取模板，替换占位符 {dayEl} {dayGan} 等 */
+function tpl(key: string, vars?: Record<string, string>): string {
+  const content = loadContent();
+  const keys = key.split('.');
+  let val: any = content;
+  for (const k of keys) val = val?.[k];
+  if (typeof val !== 'string') return '';
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      val = val.replace(`{${k}}`, v);
+    }
+  }
+  return val;
+}
+
+export function analyzePersonality(ctx: SharedContext): AnalysisItem[] {
+  const items: AnalysisItem[] = [];
+  const dg = ctx.dayGan;
+
+  // 1. 日干体性
+  const traitL1 = tpl(`dayGanTraits.${dg}.l1`);
+  if (traitL1) {
+    items.push({
+      level: '确定',
+      layer1: traitL1,
+      layer2: tpl(`dayGanTraits.${dg}.l2`),
+      layer3: tpl(`dayGanTraits.${dg}.l3`),
+    });
+  }
+
+  // 2. 身强/身弱
+  const swKey = ctx.dayStrength === '身强' ? '强' : '弱';
+  items.push({
+    level: '确定',
+    layer1: tpl(`strongWeak.${swKey}.l1`, { dayEl: ctx.dayEl }),
+    layer2: tpl(`strongWeak.${swKey}.l2`),
+    layer3: tpl(`strongWeak.${swKey}.l3`),
+  });
+
+  // 3. 食伤 → 才华表达
+  const osKey = ctx.outputStars.strength === '强' ? '强' : ctx.outputStars.strength === '无' ? '无' : '';
+  if (osKey) {
+    items.push({
+      level: osKey === '强' ? '确定' : '参考',
+      layer1: tpl(`outputStars.${osKey}.l1`),
+      layer2: tpl(`outputStars.${osKey}.l2`),
+      layer3: tpl(`outputStars.${osKey}.l3`),
+    });
+  }
+
+  // 4. 官杀
+  if (ctx.officials.strength === '强') {
+    items.push({
+      level: '确定',
+      layer1: tpl('officials.强.l1'),
+      layer2: tpl('officials.强.l2'),
+      layer3: tpl('officials.强.l3'),
+    });
+  }
+
+  // 5. 印星
+  if (ctx.seals.strength === '强') {
+    items.push({
+      level: '确定',
+      layer1: tpl('seals.强.l1'),
+      layer2: tpl('seals.强.l2'),
+      layer3: tpl('seals.强.l3'),
+    });
+  }
+
+  // 6. 五行缺失
+  for (const el of ctx.elementBalance.missing) {
+    const l1 = tpl(`missingElements.${el}.l1`);
+    if (l1) {
+      items.push({
+        level: '参考',
+        layer1: l1,
+        layer2: tpl(`missingElements.${el}.l2`),
+        layer3: tpl(`missingElements.${el}.l3`),
+      });
+    }
+  }
+
+  return items;
 }
