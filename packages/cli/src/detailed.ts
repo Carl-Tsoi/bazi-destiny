@@ -172,7 +172,7 @@ export async function generateBaziReport(
   const pillarOrder = ['时柱', '日柱', '月柱', '年柱'] as const;
 
   // ═══ 一、排盘总览 ═══
-  lines.push('## 一、排盘总览');
+  lines.push('## 排盘总览');
   lines.push('');
   lines.push(`**${bazi.pattern || ''}** | 日主: ${colored(bazi.pillars.日柱.gan)}${colored(bazi.pillars.日柱.zhi)} | 起运${bazi.dayun.startAgeYears}岁${bazi.dayun.direction === 'forward' ? '顺行' : '逆行'}`);
   lines.push('');
@@ -193,7 +193,7 @@ export async function generateBaziReport(
 
   // ═══ 二、五行旺衰分析 ═══
   const scoreData = (precomputed as any)?.score;
-  lines.push('## 二、五行旺衰分析');
+  lines.push('## 五行旺衰');
   lines.push('');
   const wxMap: Record<string,string> = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
   const dayEl2 = wxMap[bazi.pillars.日柱.gan] ?? '';
@@ -217,7 +217,7 @@ export async function generateBaziReport(
       bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, bazi.pillars.日柱.gan,
     );
 
-  lines.push('## 三、用神喜忌详解');
+  lines.push('## 用神喜忌');
   lines.push('');
   lines.push('| 分析维度 | 类型 | 用神 | 诊断 |');
   lines.push('|----------|------|------|------|');
@@ -236,7 +236,7 @@ export async function generateBaziReport(
   lines.push('');
 
   // ═══ 四、十神分布 ═══
-  lines.push('## 四、十神分布');
+  lines.push('## 十神分布');
   lines.push('');
   const wxMap3: Record<string,string> = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
   const ORDER3 = ['木','火','土','金','水'];
@@ -276,11 +276,11 @@ export async function generateBaziReport(
         const titles: Record<string,string> = {
           '五':'性格分析','六':'事业财运','七':'婚姻家庭','八':'健康提示','九':'六亲简析'
         };
-        lines.push(`## ${ch}、${titles[ch] || dim.dimension}`);
+        lines.push(`### ${titles[ch] || dim.dimension}`);
         lines.push('');
         lastChapter = ch;
       }
-      lines.push(`### ${dim.dimension}`);
+      lines.push(`**${dim.dimension}**`);
       for (const item of dim.items) {
         lines.push(`- **${item.layer1}**`);
         lines.push(`  ${item.layer2}`);
@@ -296,7 +296,7 @@ export async function generateBaziReport(
     for (const dim of BAZI_DIMENSIONS) {
       const dimNotes = baziDimension(bazi, dim.id, interactions, { gender: birthInfo?.gender, xiShen: yongShenResult.final.xiShen });
       if (dimNotes.length > 0) {
-        lines.push(`### ${dim.name}`);
+        lines.push(`**${dim.name}**`);
         for (const note of dimNotes) lines.push(`- ${note}`);
         lines.push('');
       }
@@ -307,7 +307,7 @@ export async function generateBaziReport(
 
     // ═══ 十、大运详析
   const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
-  lines.push('## 十、大运详析');
+  lines.push('## 大运详析');
   lines.push('');
   lines.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
   lines.push('|------|------|------------|------------|-----------|');
@@ -325,7 +325,7 @@ export async function generateBaziReport(
 
 
   // ═══ 十一、趋吉避凶 ═══
-  lines.push('## 十一、趋吉避凶');
+  lines.push('## 趋吉避凶');
   lines.push('');
   const directionMap: Record<string,string> = {'木':'东方','火':'南方','土':'中央/本地','金':'西方','水':'北方'};
   const colorMap: Record<string,string> = {'木':'绿色/青色','火':'红色/紫色','土':'黄色/棕色','金':'白色/金色','水':'黑色/蓝色'};
@@ -359,7 +359,7 @@ export async function generateBaziReport(
     .flatMap((e: any) => (e.diagnostics || []).map((d: string) => ({ engine: e.name, text: d })))
     .filter((r: any) => /穷通宝鉴|滴天髓|子平真诠|神峰通考|渊海子平|三命通会/.test(r.text));
   if (classicalRefs.length > 0) {
-    lines.push('## 附录：古籍参考');
+    lines.push('## 古籍参考');
     lines.push('');
     const sources = ['穷通宝鉴','滴天髓','子平真诠','神峰通考','渊海子平','三命通会'];
     for (const src of sources) {
@@ -375,9 +375,9 @@ export async function generateBaziReport(
   if (!birthInfo?.skipAi) {
     const aiData = (precomputed as any)?.aiResult;
     if (aiData?.yuanju) {
-      lines.push('## 原局分析'); lines.push(''); lines.push(aiData.yuanju); lines.push('');
-      if (aiData.dayun) { lines.push('## 大运分析'); lines.push(''); lines.push(aiData.dayun); lines.push(''); }
-      if (aiData.liunian) { lines.push('## 流年分析'); lines.push(''); lines.push(aiData.liunian); lines.push(''); }
+      lines.push('### 原局分析'); lines.push(''); lines.push(aiData.yuanju); lines.push('');
+      if (aiData.dayun) { lines.push('### AI解读'); lines.push(''); lines.push(aiData.dayun); lines.push(''); }
+      if (aiData.liunian) { lines.push('### AI解读'); lines.push(''); lines.push(aiData.liunian); lines.push(''); }
     }
   }
 
