@@ -12,8 +12,8 @@ import { BirthInfoSchema, initDatabase } from '@bazi-destiny/core';
 import { BaziEngine } from '@bazi-destiny/engine-bazi';
 import { renderBazi } from './ascii.js';
 import { runSensitivity } from './sensitivity.js';
-import { cite, scoreChart, analyzeChart } from '@bazi-destiny/knowledge-base';
-import type { ChartResult } from '@bazi-destiny/knowledge-base';
+import { cite, scoreChart, analyzeChart, analyzeAllDimensions } from '@bazi-destiny/knowledge-base';
+import type { ChartResult, SpecialtyResultV2 } from '@bazi-destiny/knowledge-base';
 import { generateBaziReport, generateScoringReport } from './detailed.js';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
@@ -129,8 +129,15 @@ program
           dayStrength: score.dayStrength,
           final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
         });
+        // L5: 专项分析（11维规则引擎）
+        const specialty = analyzeAllDimensions(chart, score, analysis, {
+          gender: birthInfo.gender as 'M' | 'F',
+          age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(),
+        });
+
         // 预计算结果，传给报告生成器避免重复计算
         (bazi as any)._precomputed = {
+          specialty,
           yongShenResult: {
             tiaohou: analysis.tiaohou,
             fuyi: analysis.fuyi,
@@ -229,7 +236,7 @@ program
           gender: birthInfo.gender,
           name: options.name as string || '',
           skipAi: !(options.ai as boolean),
-        });
+        }, (outputs.bazi as any)._precomputed);
         if (options.output) {
           const reportPath = (options.output as string).replace(/\.(txt|json)$/, '') + '-report.md';
           fs.writeFileSync(reportPath, baziReport, 'utf-8');

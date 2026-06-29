@@ -246,28 +246,41 @@ export async function generateBaziReport(
     lines.push('');
   }
 
-  // 专项分析
+  // 专项分析 — 优先使用新版引擎结果（L5预计算），fallback旧版
+  const specialtyV2 = (precomputed as any)?.specialty;
   const birthYear = birthInfo ? new Date(birthInfo.datetime).getFullYear() : 1980;
   const interactions = analyzeInteractions(bazi.pillars, bazi.dayun.steps, birthYear, bazi.pattern || '');
   const flow = checkElementFlow(bazi.pillars);
-  const specialty = analyzeSpecialty(bazi, yongShenResult.fuyi.dayStrength, bazi.pattern || '', birthInfo?.gender);
-
   lines.push('## 专项分析');
   lines.push('');
 
-  for (const dim of BAZI_DIMENSIONS) {
-    const dimNotes = baziDimension(bazi, dim.id, interactions, { gender: birthInfo?.gender, xiShen: yongShenResult.final.xiShen });
-    if (dimNotes.length > 0) {
-      lines.push(`### ${dim.name}`);
-      for (const note of dimNotes) lines.push(`- ${note}`);
+  if (specialtyV2?.dimensions) {
+    for (const dim of specialtyV2.dimensions) {
+      if (!dim.items || dim.items.length === 0) continue;
+      lines.push(`### ${dim.dimension}`);
+      for (const item of dim.items) {
+        lines.push(`- **${item.layer1}**`);
+        lines.push(`  ${item.layer2}`);
+        lines.push(`  > ${item.layer3}`);
+      }
       lines.push('');
     }
+    lines.push(`**命格等级: ${specialtyV2.rating.grade}** — ${specialtyV2.rating.summary}`);
+    lines.push('');
+  } else {
+    // 旧版 fallback
+    const specialty = analyzeSpecialty(bazi, yongShenResult.fuyi.dayStrength, bazi.pattern || '', birthInfo?.gender);
+    for (const dim of BAZI_DIMENSIONS) {
+      const dimNotes = baziDimension(bazi, dim.id, interactions, { gender: birthInfo?.gender, xiShen: yongShenResult.final.xiShen });
+      if (dimNotes.length > 0) {
+        lines.push(`### ${dim.name}`);
+        for (const note of dimNotes) lines.push(`- ${note}`);
+        lines.push('');
+      }
+    }
+    lines.push(`**命格等级: ${specialty.rating.grade}** — ${specialty.rating.summary}`);
+    lines.push('');
   }
-
-  lines.push('---');
-  lines.push('');
-  lines.push(`**命格等级: ${specialty.rating.grade}** — ${specialty.rating.summary}`);
-  lines.push('');
 
   // AI叙事（默认跳过，--ai 启用）
   if (!birthInfo?.skipAi) {

@@ -34,7 +34,8 @@ export { scoreChart } from './scoring/score-engine.js';
 // ── L4 分析层 ──
 export { analyzeChart } from './analysis/analyzer.js';
 export type { ChartResult, ScoreResult, AnalysisResult, ElementScores } from './analysis/types.js';
-export { analyzeSpecialty } from './specialty/index.js';
-export type { SpecialtyResult } from './specialty/index.js';
+export { analyzeSpecialty, analyzeAllDimensions } from './specialty/index.js';
+export type { SpecialtyResult, SpecialtyResultV2, DimensionResult } from './specialty/index.js';
+export type { AnalysisItem } from './specialty/types.js';
 export { findArchBranches, checkSevenKillings, checkElementFlow } from './analysis/jiang-wenzheng.js';
 export { cite } from './rules/rules-lookup.js';

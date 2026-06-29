@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/specialty/content dist/specialty/ && cp src/scoring/climate-coeff*.json dist/scoring/",
     "clean": "rm -rf dist"
   },
   "dependencies": {
