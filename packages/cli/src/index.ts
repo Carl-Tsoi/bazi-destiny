@@ -346,9 +346,6 @@ program
           name: options.name as string,
           gender: options.gender,
           birth: datetime.replace('T', ' '),
-          location: options.lat ? `${options.lat}, ${options.lon}` : '',
-          reportPath: `output/${options.name}/full-bazi.md`,
-          generatedAt: new Date().toISOString(),
         };
         if (existingIdx >= 0) casesFile[existingIdx] = entry;
         else casesFile.push(entry);
