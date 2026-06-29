@@ -126,20 +126,20 @@ program
         const score = scoreChart(chart);
         // 保存L3结果
         if (options.name) {
-          const layerDir = `output/layers/${options.name}`;
+          const layerDir = `output/${options.name}/layers`;
           fs.mkdirSync(layerDir, { recursive: true });
           fs.writeFileSync(`${layerDir}/L3-score.json`, JSON.stringify(score, null, 2));
         }
         const analysis = await analyzeChart(chart, score, { age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(), gender: birthInfo.gender as 'M' | 'F',
         });
         // 注入 L3+L4 结果（兼容旧报告接口）
-        /*** Save L4 result */ if (options.name) { fs.writeFileSync(`output/layers/${options.name}/L4-analysis.json`, JSON.stringify(analysis, null, 2)); }
+        /*** Save L4 result */ if (options.name) { fs.writeFileSync(`output/${options.name}/layers/L4-analysis.json`, JSON.stringify(analysis, null, 2)); }
         Object.assign(bazi, {
           yongShen: analysis.yongShen,
           dayStrength: score.dayStrength,
           final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
         });
-        /*** Save L3 score to file */ if (options.name) { fs.writeFileSync(`output/layers/${options.name}/L3-score.json`, JSON.stringify(score, null, 2)); }
+        /*** Save L3 score to file */ if (options.name) { fs.writeFileSync(`output/${options.name}/layers/L3-score.json`, JSON.stringify(score, null, 2)); }
         // L5: 专项分析（11维规则引擎）
         const specialty = analyzeAllDimensions(chart, score, analysis, {
           gender: birthInfo.gender as 'M' | 'F',
@@ -179,7 +179,7 @@ program
         }
 
         // 预计算结果（类型安全），传给报告生成器避免重复计算
-        /*** Save L5 result */ if (options.name) { fs.writeFileSync(`output/layers/${options.name}/L5-specialty.json`, JSON.stringify(specialty, null, 2)); }
+        /*** Save L5 result */ if (options.name) { fs.writeFileSync(`output/${options.name}/layers/L5-specialty.json`, JSON.stringify(specialty, null, 2)); }
         precomputed = {
           aiResult,
           specialty,
@@ -266,8 +266,8 @@ program
 
         if (options.output) {
           const base = (options.output as string).replace(/\.(txt|json)$/, '');
-          fs.writeFileSync(`${base}-bazi.md`, baziReport, 'utf-8');
-          console.log(`Saved: ${base}-bazi.md`);
+          const reportDir = `output/${options.name}/report`; fs.mkdirSync(reportDir, { recursive: true }); fs.writeFileSync(`${reportDir}/bazi.md`, baziReport, 'utf-8');
+          console.log(`Saved: ${reportDir}/bazi.md`);
         } else {
           console.log(baziReport);
         }
@@ -283,7 +283,7 @@ program
           skipAi: !(options.ai as boolean),
         }, precomputed!);
         if (options.output) {
-          const reportPath = (options.output as string).replace(/\.(txt|json)$/, '') + '-report.md';
+          const reportPath = `output/${options.name}/report/report.md`;
           fs.writeFileSync(reportPath, baziReport, 'utf-8');
           console.log(`Report saved: ${reportPath}`);
         } else {
