@@ -71,7 +71,7 @@ export async function generateScoringReport(
   // ═══ 三、逐项计分 ════════════════════════════════
   lines.push('## 三、逐项计分');
   lines.push('');
-  const grouped: Record<string, string[]> = { 天干: [], 地支: [], 同柱: [], 干生克: [], 地生: [], 地克: [], 合化: [], 空亡: [], 刑冲: [], 克关系: [] };
+  const grouped: Record<string, string[]> = { 天干: [], 地支: [], 同柱: [], 干生克: [], 地生: [], 地克: [], 合化: [], 空亡: [], 刑冲: [], 位置: [], 归日: [] };
   for (const d of yongShenResult.fuyi.details) {
     if (d.startsWith('天干')) grouped.天干.push(d);
     else if (d.startsWith('地支') && !d.includes('六合') && !d.includes('半合') && !d.includes('拱合') && !d.includes('三合') && !d.includes('三会')) grouped.地支.push(d);
@@ -82,7 +82,8 @@ export async function generateScoringReport(
     else if (d.includes('六合') || d.includes('半合') || d.includes('拱合') || d.includes('三合') || d.includes('三会')) grouped.合化.push(d);
     else if (d.includes('空亡')) grouped.空亡.push(d);
     else if (d.includes('刑') || d.includes('冲')) grouped.刑冲.push(d);
-    else if (d.includes('克关系')) grouped.克关系.push(d);
+    else if (d.includes('归日') || d.includes('克关系')) grouped.归日.push(d);
+    else if (d.startsWith('位置')) grouped.位置.push(d);
   }
   for (const [title, items] of Object.entries(grouped)) {
     if (!items.length) continue;
@@ -143,18 +144,18 @@ export async function generateScoringReport(
   lines.push('## 七、强弱判定逻辑');
   const fuyi = yongShenResult.fuyi;
   lines.push('');
+  // 从归日行解析自党/异党
+  const guiriLine = yongShenResult.fuyi.details.find((d: string) => d.startsWith('归日'));
+  const ziMatch = guiriLine?.match(/自党[=＝]([\d.]+)/);
+  const yiMatch = guiriLine?.match(/异党[=＝]([\d.]+)/);
+  if (ziMatch && yiMatch) {
+    const ziDang = parseFloat(ziMatch[1]);
+    const yiDang = parseFloat(yiMatch[1]);
+    lines.push(`- 自党(日主+印/2): ${ziDang.toFixed(1)}分`);
+    lines.push(`- 异党(官+食+财): ${yiDang.toFixed(1)}分`);
+    lines.push(`- 判定: 自党(${ziDang.toFixed(1)}) vs 异党(${yiDang.toFixed(1)}) → ${fuyi.dayStrength}`);
+  }
   lines.push(`- 日主得分: ${fuyi.dayScore.toFixed(1)}分`);
-  const se2 = Object.entries(fuyi.elementScores);
-  const dayEl = se2.find(([, v]) => v === fuyi.dayScore)?.[0] ?? '';
-  const dayIdx2 = ['木', '火', '土', '金', '水'].indexOf(dayEl);
-  const oppEls = [['木', '火', '土', '金', '水'][(dayIdx2 + 3) % 5], ['木', '火', '土', '金', '水'][(dayIdx2 + 1) % 5], ['木', '火', '土', '金', '水'][(dayIdx2 + 2) % 5]];
-  const oppScore = oppEls.reduce((s, e) => s + (scores[e] ?? 0), 0);
-  lines.push(`- 克泄耗(官+食+财): ${oppScore.toFixed(1)}分`);
-  const shengEl = ['木', '火', '土', '金', '水'][(dayIdx2 + 4) % 5];
-  const shengSc = scores[shengEl] ?? 0;
-  const effectiveD = shengSc > fuyi.dayScore ? fuyi.dayScore + Math.floor(shengSc / 2) : fuyi.dayScore;
-  lines.push(`- 印星(${shengEl}): ${shengSc.toFixed(1)}分 → 有效日主 = ${effectiveD.toFixed(1)}分`);
-  lines.push(`- 判定: effectiveDay(${effectiveD.toFixed(1)}) vs opposeScore(${oppScore.toFixed(1)}) → ${fuyi.dayStrength}`);
   lines.push('');
 
   lines.push('---');

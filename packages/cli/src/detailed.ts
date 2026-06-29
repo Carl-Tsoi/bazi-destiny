@@ -224,28 +224,27 @@ export async function generateBaziReport(bazi: BaziChart, birthInfo?: { datetime
   lines.push('');
 
   // 大运详析
-  const dayunJudgments = (judgeDayun as any)(bazi.pillars, bazi.dayun, yongShenResult.final.yongShen, yongShenResult.fuyi.dayStrength);
+  const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
   lines.push('## 大运详析');
   lines.push('');
   lines.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
   lines.push('|------|------|------------|------------|-----------|');
   for (const d of dayunJudgments) {
-    lines.push(`| ${d.startAge ?? d.ageStart}-${d.endAge ?? d.ageEnd} | ${d.gan}${d.zhi} | ${d.ganJudgment || ''} | ${d.zhiJudgment || ''} | ${(d.interaction ?? d.interactions) || ''} |`);
+    lines.push(`| ${d.step.startAge}-${d.step.endAge} | ${d.step.gan}${d.step.zhi} | ${d.ganJudgment || ''} | ${d.zhiJudgment || ''} | ${d.interactions.join('；') || ''} |`);
   }
   lines.push('');
 
-  const currentDayun = dayunJudgments.find((d: any) => (d.startAge ?? d.ageStart) <= age && (d.endAge ?? d.ageEnd) >= age);
+  const currentDayun = dayunJudgments.find(d => d.step.startAge <= age && d.step.endAge >= age);
   if (currentDayun) {
-    const sa = currentDayun.startAge ?? currentDayun.ageStart;
-    const ea = currentDayun.endAge ?? currentDayun.ageEnd;
-    lines.push(`**当前大运**: ${sa}-${ea}岁 ${currentDayun.gan}${currentDayun.zhi}（${currentDayun.ganJudgment}）`);
+    lines.push(`**当前大运**: ${currentDayun.step.startAge}-${currentDayun.step.endAge}岁 ${currentDayun.step.gan}${currentDayun.step.zhi}（${currentDayun.ganJudgment}）`);
     lines.push('');
   }
 
   // 专项分析
-  const interactions = (analyzeInteractions as any)(bazi.pillars, yongShenResult.final.yongShen);
-  const flow = (checkElementFlow as any)(bazi.pillars);
-  const specialty = (analyzeSpecialty as any)(bazi, yongShenResult.fuyi.dayStrength, bazi.pattern || '', birthInfo?.gender);
+  const birthYear = birthInfo ? new Date(birthInfo.datetime).getFullYear() : 1980;
+  const interactions = analyzeInteractions(bazi.pillars, bazi.dayun.steps, birthYear, bazi.pattern || '');
+  const flow = checkElementFlow(bazi.pillars);
+  const specialty = analyzeSpecialty(bazi, yongShenResult.fuyi.dayStrength, bazi.pattern || '', birthInfo?.gender);
 
   lines.push('## 专项分析');
   lines.push('');
@@ -264,20 +263,48 @@ export async function generateBaziReport(bazi: BaziChart, birthInfo?: { datetime
   lines.push(`**命格等级: ${specialty.rating.grade}** — ${specialty.rating.summary}`);
   lines.push('');
 
-  // AI叙事（默认跳过）
+  // AI叙事（默认跳过，--ai 启用）
   if (!birthInfo?.skipAi) {
     try {
-      const narratives = (generateNarratives as any)({
-        bazi,
-        yongShen: yongShenResult.final.yongShen,
+      const narratives = await generateNarratives({
+        name: birthInfo?.name,
+        pattern: bazi.pattern || '',
+        yongShen: {
+          yongShen: yongShenResult.final.yongShen,
+          xiShen: yongShenResult.final.xiShen,
+          jiShen: yongShenResult.final.jiShen,
+          methods: (yongShenResult.engines ?? []).map((e: any) => ({
+            method: e.name, yongShen: e.yongShen ?? '', reason: e.diagnostics?.join('；') ?? '',
+          })),
+        },
+        finalYongShen: yongShenResult.final.yongShen,
+        finalXiShen: yongShenResult.final.xiShen,
+        finalJiShen: yongShenResult.final.jiShen,
         dayStrength: yongShenResult.fuyi.dayStrength,
-      }, { citations: true });
+        pillars: Object.fromEntries(
+          (['年柱','月柱','日柱','时柱'] as const).map(k => [k, `${(bazi.pillars as any)[k].gan}${(bazi.pillars as any)[k].zhi} ${(bazi.pillars as any)[k].shishen} ${(bazi.pillars as any)[k].nayin || ''}`])
+        ),
+        dayun: bazi.dayun.steps.map(s => ({
+          age: `${s.startAge}-${s.endAge}`, ganZhi: `${s.gan}${s.zhi}`, tenGod: `${s.ganShishen}/${s.zhiShishen}`,
+        })),
+        currentDayun: '',
+        currentYear: String(new Date().getFullYear()),
+        liunian: '',
+        dimensions: Object.fromEntries(
+          BAZI_DIMENSIONS.map(dim => [dim.id, baziDimension(bazi, dim.id, interactions, { gender: birthInfo?.gender, xiShen: yongShenResult.final.xiShen })])
+        ),
+        interactions: { gans: [], zhis: [], dayunEffects: [] },
+      });
       lines.push('## AI 叙事分析');
       lines.push('');
-      lines.push(typeof narratives === 'string' ? narratives : '');
+      lines.push(narratives.yuanjuEvaluation || '');
       lines.push('');
-    } catch {
-      lines.push('<!-- AI narrative generation skipped -->');
+      if (narratives.dayunEvaluation) {
+        lines.push(narratives.dayunEvaluation);
+        lines.push('');
+      }
+    } catch (e: any) {
+      lines.push(`<!-- AI narrative skipped: ${e?.message || e} -->`);
     }
   }
 

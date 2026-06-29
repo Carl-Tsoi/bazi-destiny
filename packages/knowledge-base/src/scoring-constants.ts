@@ -12,16 +12,21 @@ export const ZWX: Record<string, string> = {
   '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水',
 };
 export const ORDER = ['木', '火', '土', '金', '水'];
-export const YIN_GAN = new Set(['乙', '丁', '己', '辛', '癸']);
 
-// ── 气候系数（从 JSON 加载）───────────────────────
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const climateJson = JSON.parse(readFileSync(join(__dirname, 'climate-coeff.json'), 'utf-8'));
-export const CLIMATE_COEFF: Record<string, Record<string, number>> = climateJson.data;
+// ── 气候系数（委托给 climate.ts 模块）───────────────
+import { getClimate } from './climate.js';
+export { getClimate, loadVersion as loadClimateVersion, activeVersion as climateVersion } from './climate.js';
+
+/** 兼容旧代码：只读 lookup */
+export const CLIMATE_COEFF = new Proxy({} as Record<string, Record<string, number>>, {
+  get(_t, month: string) {
+    return new Proxy({} as Record<string, number>, {
+      get(_t2, el: string) {
+        return getClimate(month, el);
+      },
+    });
+  },
+});
 
 // ── 根气 ──────────────────────────────────────────
 export const ROOT_ZHI: Record<string, string[]> = {
