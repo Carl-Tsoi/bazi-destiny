@@ -3,6 +3,7 @@
  */
 import type { BaziChart } from '@bazi-destiny/core';
 import { determineYongShen, CLIMATE_COEFF } from '@bazi-destiny/knowledge-base';
+import type { YongShenResult } from '@bazi-destiny/knowledge-base';
 
 function now(): string {
   const d = new Date();
@@ -13,6 +14,7 @@ function now(): string {
 export async function generateScoringReport(
   bazi: BaziChart,
   birthInfo?: { datetime: string; location: string; gender: string; name?: string; skipAi?: boolean },
+  precomputed?: { yongShenResult?: YongShenResult },
 ): Promise<string> {
   const lines: string[] = [];
   const n = now();
@@ -27,9 +29,10 @@ export async function generateScoringReport(
   lines.push('---');
   lines.push('');
 
-  const yongShenResult = await determineYongShen(
-    bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, bazi.pillars.日柱.gan,
-  );
+  const yongShenResult = precomputed?.yongShenResult
+    ?? await determineYongShen(
+      bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, bazi.pillars.日柱.gan,
+    );
 
   // 五行颜色
   const wxColor: Record<string, string> = {

@@ -28,31 +28,13 @@ export { methodBingYao } from './method-bingyao.js';
 export type { BingYaoInput, BingYaoOutput } from './method-bingyao.js';
 export { judgeDayun, judgeLiunian } from './dayun-judge.js';
 export type { DayunJudgment, LiunianJudgment } from './dayun-judge.js';
+
+// ── L3 计分层 ──
+export { scoreChart } from './scoring/score-engine.js';
+// ── L4 分析层 ──
+export { analyzeChart } from './analysis/analyzer.js';
+export type { ChartResult, ScoreResult, AnalysisResult, ElementScores } from './analysis/types.js';
 export { analyzeSpecialty } from './specialty/index.js';
 export type { SpecialtyResult } from './specialty/index.js';
-export { evaluate, renderEvaluation } from './evaluator.js';
-export type { EvalResult, EvalInput } from './evaluator.js';
 export { findArchBranches, checkSevenKillings, checkElementFlow } from './jiang-wenzheng.js';
 export { cite } from './rules-lookup.js';
-
-// ── 六书属性扩展 ──
-export { BookName, enrichChart, getAnnotation, getAttribute, setAnnotation } from './attributes/base-types.js';
-export type { BookAnnotation, EnrichedChart } from './attributes/base-types.js';
-export type { QiongTongAttributes } from './attributes/qiongtong.js';
-export type { DiTianSuiAttributes } from './attributes/ditiansui.js';
-export type { ShenFengAttributes } from './attributes/shenfeng.js';
-export type { ZiPingAttributes } from './attributes/ziping.js';
-export type { YuanHaiAttributes } from './attributes/yuanhai.js';
-export type { SanMingAttributes } from './attributes/sanming.js';
-
-// ── 过滤器管线 ──
-export { AnalysisPipeline } from './pipeline/pipeline.js';
-export { zipingPatternFilter } from './pipeline/filters/ziping-pattern.js';
-export { ditiansuiBalanceFilter } from './pipeline/filters/ditiansui-balance.js';
-export { qiongtongClimateFilter } from './pipeline/filters/qiongtong-climate.js';
-export { shenfengBingyaoFilter } from './pipeline/filters/shenfeng-bingyao.js';
-export { yuanhaiShenshaFilter } from './pipeline/filters/yuanhai-shensha.js';
-export { sanmingQigeFilter } from './pipeline/filters/sanming-qige.js';
-export { ConflictResolver } from './pipeline/conflict-resolver.js';
-export type { ResolvedResult } from './pipeline/conflict-resolver.js';
-export type { AnalysisContext, AnalysisFilter, FilterOutput } from './pipeline/types.js';

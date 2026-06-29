@@ -4,7 +4,7 @@
 import type { BirthInfo, Result, IDivinationEngine } from '@bazi-destiny/core';
 import { BaziChartSchema } from '@bazi-destiny/core';
 import type { BaziChart as BaziOutput } from '@bazi-destiny/core';
-import { detectPattern, determineYongShen } from '@bazi-destiny/knowledge-base';
+import { detectPattern } from '@bazi-destiny/knowledge-base';
 
 export class BaziEngine implements IDivinationEngine<BaziOutput> {
   async calculate(birthInfo: BirthInfo): Promise<Result<BaziOutput>> {
@@ -84,22 +84,13 @@ export class BaziEngine implements IDivinationEngine<BaziOutput> {
         },
       };
 
-      // Auto-detect pattern (格局) by月令透干法
+      // Auto-detect pattern (格局)
       const patternResult = detectPattern(chart);
       if (patternResult) {
         chart.pattern = patternResult.pattern;
       }
 
-      // Determine yongShen (用神) by four-dimension cross-validation
-      const yongShenResult = await determineYongShen(
-        chart.pillars as unknown as Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{stem: string; tenGod: string}> }>,
-        chart.pattern,
-        chart.pillars.月柱.zhi,
-        chart.pillars.日柱.gan,
-      );
-      chart.yongShen = yongShenResult.final.yongShen;
-      (chart as Record<string, unknown>).final = yongShenResult.final;
-      (chart as Record<string, unknown>).dayStrength = yongShenResult.fuyi.dayStrength;
+      // 用神/计分不再在Engine内计算，交由上层编排器调用 L3→L4
 
       // Zod validation
       BaziChartSchema.parse(chart);

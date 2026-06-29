@@ -10,13 +10,10 @@
 import { Command } from 'commander';
 import { BirthInfoSchema, initDatabase } from '@bazi-destiny/core';
 import { BaziEngine } from '@bazi-destiny/engine-bazi';
-// 紫微/占星引擎暂停开发，后续启用
-// import { ZiweiEngine } from '@bazi-destiny/engine-ziwei';
-// import { AstrologyEngine } from '@bazi-destiny/engine-astrology';
-import { renderBazi /*, renderZiwei, renderAstrology */ } from './ascii.js';
+import { renderBazi } from './ascii.js';
 import { runSensitivity } from './sensitivity.js';
-import { cite } from '@bazi-destiny/knowledge-base';
-import { generateReport } from '@bazi-destiny/reports';
+import { cite, scoreChart, analyzeChart } from '@bazi-destiny/knowledge-base';
+import type { ChartResult } from '@bazi-destiny/knowledge-base';
 import { generateBaziReport, generateScoringReport } from './detailed.js';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
@@ -109,6 +106,48 @@ program
         }
       }
 
+      // ═══ L3+L4: 计分 + 分析（编排器统一执行，不再在Engine或报告中重复计算） ═══
+      if (outputs.bazi) {
+        const bazi = outputs.bazi as Record<string, unknown>;
+        const chart: ChartResult = {
+          pillars: bazi.pillars as ChartResult['pillars'],
+          dayun: bazi.dayun as ChartResult['dayun'],
+          pattern: bazi.pattern as string || '',
+          shensha: (bazi.shensha || {}) as ChartResult['shensha'],
+          dayGan: (bazi.pillars as Record<string, {gan: string}>).日柱?.gan ?? '',
+          dayZhi: (bazi.pillars as Record<string, {zhi: string}>).日柱?.zhi ?? '',
+          monthZhi: (bazi.pillars as Record<string, {zhi: string}>).月柱?.zhi ?? '',
+        };
+        const score = scoreChart(chart);
+        const analysis = await analyzeChart(chart, score, {
+          age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(),
+          gender: birthInfo.gender as 'M' | 'F',
+        });
+        // 注入 L3+L4 结果（兼容旧报告接口）
+        Object.assign(bazi, {
+          yongShen: analysis.yongShen,
+          dayStrength: score.dayStrength,
+          final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
+        });
+        // 预计算结果，传给报告生成器避免重复计算
+        (bazi as any)._precomputed = {
+          yongShenResult: {
+            tiaohou: analysis.tiaohou,
+            fuyi: analysis.fuyi,
+            bingyao: analysis.bingyao,
+            engines: analysis.engines,
+            final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
+          },
+          score: {
+            dayStrength: score.dayStrength,
+            dayScore: score.dayScore,
+            elementScores: score.elementScores,
+            ziDang: score.ziDang,
+            yiDang: score.yiDang,
+          },
+        };
+      }
+
       // Build output
       const jsonOutput = JSON.stringify({ outputs, errors }, null, 2);
       let textOutput = '';
@@ -155,7 +194,7 @@ program
 
       // Scoring process report
       if (options.scoring && outputs.bazi) {
-        const scoringReport = await generateScoringReport(outputs.bazi as any, { datetime, location: `${birthInfo.latitude}, ${birthInfo.longitude}`, gender: birthInfo.gender, name: options.name as string || '' });
+        const scoringReport = await generateScoringReport(outputs.bazi as any, { datetime, location: `${birthInfo.latitude}, ${birthInfo.longitude}`, gender: birthInfo.gender, name: options.name as string || '' }, (outputs.bazi as any)._precomputed);
         if (options.output) {
           fs.writeFileSync(`${(options.output as string).replace(/\.(txt|json)$/, '')}-scoring.md`, scoringReport, 'utf-8');
           console.log(`Saved: ${(options.output as string).replace(/\.(txt|json)$/, '')}-scoring.md`);
@@ -171,7 +210,7 @@ program
           name: options.name as string || '',
           skipAi: !(options.ai as boolean),
         };
-        const baziReport = await generateBaziReport(outputs.bazi as Parameters<typeof generateBaziReport>[0], birthInfoObj);
+        const baziReport = await generateBaziReport(outputs.bazi as any, birthInfoObj, (outputs.bazi as any)._precomputed);
 
         if (options.output) {
           const base = (options.output as string).replace(/\.(txt|json)$/, '');
@@ -184,7 +223,7 @@ program
 
       // 专业报告（紫微/占星暂停开发，仅出八字报告）
       if (options.report && outputs.bazi) {
-        const baziReport = await generateBaziReport(outputs.bazi as Parameters<typeof generateBaziReport>[0], {
+        const baziReport = await generateBaziReport(outputs.bazi as any, {
           datetime: datetime,
           location: `${birthInfo.latitude}, ${birthInfo.longitude}`,
           gender: birthInfo.gender,

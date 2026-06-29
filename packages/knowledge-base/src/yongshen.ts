@@ -18,6 +18,7 @@ import { methodTiaoHou } from './method-tiaohou.js';
 import { methodFuYi } from './method-fuyi.js';
 import { methodTongGuan } from './method-tongguan.js';
 import { methodBingYao } from './method-bingyao.js';
+import type { ScoreResult } from './analysis/types.js';
 
 import { zipingEngine } from './engines/ziping.js';
 import { ditiansuiEngine } from './engines/ditiansui.js';
@@ -56,19 +57,22 @@ function getBaseJi(dayStrength: string, dayEl: string, dayIdx: number): string[]
 
 export async function determineYongShen(
   pillars: Record<string, Pillar>, _pattern: string, monthZhi: string, dayGan: string,
+  score?: ScoreResult,
 ): Promise<YongShenResult> {
   const dayEl = WUXING[dayGan] ?? '';
   const dayIdx = ELEMENT_ORDER.indexOf(dayEl);
 
   const tiaohou = methodTiaoHou({ dayGan, monthZhi, pillars });
-  const fuyi = methodFuYi({ pillars });
+  const fuyi = score
+    ? methodFuYi({ dayGan, score })
+    : methodFuYi({ dayGan, score: { dayScore: 0, dayStrength: '身弱', elementScores: {木:0,火:0,土:0,金:0,水:0}, ziDang: 0, yiDang: 0, details: [], climateVersion: 1 } });
   const tongguan = methodTongGuan({
     dayGan, dayStrength: fuyi.dayStrength,
     xiShen: getBaseXi(fuyi.dayStrength, dayEl, dayIdx),
     jiShen: getBaseJi(fuyi.dayStrength, dayEl, dayIdx),
-    elementScores: fuyi.elementScores, pillars,
+    elementScores: fuyi.elementScores as Record<string, number>, pillars,
   });
-  const bingyao = methodBingYao({ pillars, dayStrength: fuyi.dayStrength, dayScore: fuyi.dayScore, elementScores: fuyi.elementScores });
+  const bingyao = methodBingYao({ pillars, dayStrength: fuyi.dayStrength, dayScore: fuyi.dayScore, elementScores: fuyi.elementScores as Record<string, number> });
 
   const ctx: LayeredContext = {
     base: { engine:'bazi',birthInfo:{datetime:'',solarTerm:'',trueSolarTime:false},pillars:pillars as any,pattern:_pattern,yongShen:'',shensha:{},dayun:{startAgeYears:0,direction:'forward',steps:[]} },

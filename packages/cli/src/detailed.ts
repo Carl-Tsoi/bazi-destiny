@@ -3,6 +3,7 @@
  */
 import type { BaziChart } from '@bazi-destiny/core';
 import { determineYongShen, judgeDayun, judgeLiunian, analyzeSpecialty, analyzeInteractions, checkElementFlow } from '@bazi-destiny/knowledge-base';
+import type { YongShenResult } from '@bazi-destiny/knowledge-base';
 import { generateNarratives } from '@bazi-destiny/reports';
 
 // Re-export scoring report (extracted to separate module)
@@ -142,7 +143,11 @@ function baziDimension(
 
 // ── 八字专业报告 ────────────────────────────────────
 
-export async function generateBaziReport(bazi: BaziChart, birthInfo?: { datetime: string; location: string; gender: string; name?: string; skipAi?: boolean }): Promise<string> {
+export async function generateBaziReport(
+  bazi: BaziChart,
+  birthInfo?: { datetime: string; location: string; gender: string; name?: string; skipAi?: boolean },
+  precomputed?: { yongShenResult?: YongShenResult; score?: { dayStrength: string; dayScore: number; elementScores: Record<string, number>; ziDang: number; yiDang: number } },
+): Promise<string> {
   const lines: string[] = [];
   const n = now();
   const age = birthInfo ? new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear() : 0;
@@ -186,10 +191,11 @@ export async function generateBaziReport(bazi: BaziChart, birthInfo?: { datetime
   }
   lines.push('');
 
-  // 用神分析
-  const yongShenResult = await determineYongShen(
-    bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, bazi.pillars.日柱.gan,
-  );
+  // 用神分析（优先使用外部传入的预计算结果）
+  const yongShenResult = precomputed?.yongShenResult
+    ?? await determineYongShen(
+      bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, bazi.pillars.日柱.gan,
+    );
 
   lines.push('## 用神分析');
   lines.push('');
