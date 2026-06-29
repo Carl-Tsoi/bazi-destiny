@@ -41,29 +41,22 @@ export function analyzePersonality(ctx:SharedContext):AnalysisItem[]{
     if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
 
-  // 3. 官杀 → 自律/冲动 (offset 3 =克日主)
-  if(ctx.officials.strength==='强'||ctx.officials.strength==='一般'){
-    const ji=elIsJi(dayIdx,3,ctx), t=ji?C().officialsJi:C().officialsYong;
-    if(t) items.push({level:ji?'确定':'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
+  // 辅助：pick template by strength + 喜忌
+  function pick(prefix:string, strength:string, offset:number): any {
+    const strong = strength==='强'||strength==='一般';
+    const isJi = elIsJi(dayIdx, offset, ctx);
+    const key = prefix + (strong?'strong':(strength==='弱'?'weak':'weak')) + (isJi?'Ji':'Yong');
+    return C()[key];
   }
 
-  // 4. 食伤 → 才华/叛逆 (offset 1 =日主生)
-  if(ctx.outputStars.strength==='强'||ctx.outputStars.strength==='一般'){
-    const ji=elIsJi(dayIdx,1,ctx), t=ji?C().outputJi:C().outputYong;
-    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
-  }
-
-  // 5. 印星 → 学习/依赖 (offset 4 =生日主)
-  if(ctx.seals.strength==='强'||ctx.seals.strength==='一般'){
-    const ji=elIsJi(dayIdx,4,ctx), t=ji?C().sealsJi:C().sealsYong;
-    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
-  }
-
-  // 6. 比劫 → 社交/损友 (offset 0 =同)
-  if(ctx.peers.strength==='强'||ctx.peers.strength==='一般'){
-    const ji=elIsJi(dayIdx,0,ctx), t=ji?C().peersJi:C().peersYong;
-    if(t) items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
-  }
+  // 3. 官杀 (offset 3)
+  if(ctx.officials.strength!=='无'){const t=pick('officials_',ctx.officials.strength,3);if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  // 4. 食伤 (offset 1)
+  if(ctx.outputStars.strength!=='无'){const t=pick('output_',ctx.outputStars.strength,1);if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  // 5. 印星 (offset 4)
+  if(ctx.seals.strength!=='无'){const t=pick('seals_',ctx.seals.strength,4);if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  // 6. 比劫 (offset 0)
+  if(ctx.peers.strength!=='无'){const t=pick('peers_',ctx.peers.strength,0);if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
 
   // 7. 五行缺失
   for(const el of ctx.elementBalance.missing){
