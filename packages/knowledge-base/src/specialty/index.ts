@@ -109,7 +109,7 @@ function matchRiskCond(cond: string, ctx: SharedContext): boolean {
 
 function computeRating(ctx: SharedContext): { grade: string; summary: string } {
   let gs = 0;
-  if (ctx.pattern && !ctx.pattern.includes('未定')) gs += 2;
+  if (ctx.pattern && !ctx.pattern.includes("未定")) gs += 1;
   if (ctx.dayStrength === '身强') gs += 2;
   if (ctx.wealthStars.present) gs += 1;
   if (ctx.officials.present) gs += 1;
@@ -118,7 +118,7 @@ function computeRating(ctx: SharedContext): { grade: string; summary: string } {
   if (clashCount <= 1) gs += 1;
 
   let grade: string, summary: string;
-  if (gs >= 5) { grade = 'A'; summary = '格局明确，身强能担，财官有气，刑冲较少。命格层次较佳。'; }
+  if (gs >= 5) { grade = 'B'; summary = '格局明确，身强能担，财官有气，刑冲较少。命格层次较佳。'; }
   else if (gs >= 3) { grade = 'B'; summary = '格局可用但有不足之处，需大运补足。中等命格。'; }
   else if (gs >= 1) { grade = 'C'; summary = '格局有缺，需大运扶持方可有成。'; }
   else { grade = 'D'; summary = '格局不明，刑冲较多，波折较多。'; }
@@ -148,7 +148,7 @@ export function analyzeSpecialty(bazi: BaziChart, dayStrength: string, pattern: 
   ).length;
   if (chongCount <= 1) gs += 1;
   let grade: string, summary: string;
-  if (gs >= 5) { grade = 'A'; summary = '格局明确，身强能担，财官有气，刑冲较少。命格层次较佳。'; }
+  if (gs >= 5) { grade = 'B'; summary = '格局明确，身强能担，财官有气，刑冲较少。命格层次较佳。'; }
   else if (gs >= 3) { grade = 'B'; summary = '格局可用但有不足之处，需大运补足。中等命格。'; }
   else if (gs >= 1) { grade = 'C'; summary = '格局有缺，需大运扶持方可有成。'; }
   else { grade = 'D'; summary = '格局不明，刑冲较多，波折较多。'; }

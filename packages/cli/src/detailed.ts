@@ -330,7 +330,7 @@ export async function generateBaziReport(
   const yEl = yongShenResult.final.yongShen;
   if (yEl) {
     lines.push(`- **有利行业**: ${yEl}属性行业（见事业财运章节）`);
-    lines.push(`- **有利方位**: ${directionMap[yEl] || yEl}方`);
+    lines.push(`- **有利方位**: ${directionMap[yEl] || yEl}`);
     lines.push(`- **有利颜色**: ${colorMap[yEl] || yEl}`);
     lines.push(`- **贵人属相**: ${yEl === '木' ? '虎/兔' : yEl === '火' ? '蛇/马' : yEl === '土' ? '龙/狗/牛/羊' : yEl === '金' ? '猴/鸡' : '鼠/猪'}`);
     lines.push('');
