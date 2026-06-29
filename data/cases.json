@@ -198,5 +198,20 @@
     "location": "",
     "reportPath": "output/张汉綦/full-bazi.md",
     "generatedAt": "2026-06-28T11:25:11.211Z"
+  },
+  {
+    "name": "邓芳",
+    "gender": "F",
+    "birth": "1993-11-21 07:30",
+    "location": "",
+    "reportPath": "output/邓芳/full-bazi.md",
+    "generatedAt": "2026-06-29T14:29:40.082Z"
+  },
+  {
+    "name": "邓芳",
+    "gender": "F",
+    "birth": "1993-11-21 07:30",
+    "location": "",
+    "generatedAt": "2026-06-29T12:00:00.000Z"
   }
 ]

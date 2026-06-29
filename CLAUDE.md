@@ -75,10 +75,10 @@ npx tsx packages/knowledge-base/src/__tests__/specialty-engines.test.ts    # 单
 
 回归测试用 Python 脚本跑24例 → 见 `data/expected.json` 预期答案。
 
-## 24例测试
+## 25例测试
 
 数据: `data/cases.json` + `data/expected.json`
-命中: 23/24（刘媛从格待实现，已挂起）
+命中: 24/25（刘媛从格待实现，已挂起）
 判定文件: `docs/research/scoring-results.md`
 
 ## 当前待办
