@@ -52,20 +52,59 @@ export function analyzeAllDimensions(
   const ctx = buildContext(chart, score, analysis, options);
 
   const dimensions: DimensionResult[] = [
-    { dimension: '性格', items: analyzePersonality(ctx) },
-    { dimension: '事业', items: analyzeCareer(ctx) },
-    { dimension: '财运', items: analyzeWealth(ctx) },
-    { dimension: '婚姻', items: analyzeMarriage(ctx) },
-    { dimension: '健康', items: analyzeHealth(ctx) },
-    { dimension: '子女', items: analyzeChildren(ctx) },
-    { dimension: '父母', items: analyzeParents(ctx) },
-    { dimension: '人际', items: analyzeBenefactors(ctx) },
-    { dimension: '兄弟', items: analyzeSiblings(ctx) },
-    { dimension: '田宅', items: analyzeProperty(ctx) },
-    { dimension: '晚年', items: analyzeLaterLife(ctx) },
+    { dimension: '性格', items: (() => { const items = analyzePersonality(ctx); addRisks(items, '性格', ctx); return items; })() },
+    { dimension: '事业', items: (() => { const items = analyzeCareer(ctx); addRisks(items, '事业', ctx); return items; })() },
+    { dimension: '财运', items: (() => { const items = analyzeWealth(ctx); addRisks(items, '财运', ctx); return items; })() },
+    { dimension: '婚姻', items: (() => { const items = analyzeMarriage(ctx); addRisks(items, '婚姻', ctx); return items; })() },
+    { dimension: '健康', items: (() => { const items = analyzeHealth(ctx); addRisks(items, '健康', ctx); return items; })() },
+    { dimension: '子女', items: (() => { const items = analyzeChildren(ctx); addRisks(items, '子女', ctx); return items; })() },
+    { dimension: '父母', items: (() => { const items = analyzeParents(ctx); addRisks(items, '父母', ctx); return items; })() },
+    { dimension: '人际', items: (() => { const items = analyzeBenefactors(ctx); addRisks(items, '人际', ctx); return items; })() },
+    { dimension: '兄弟', items: (() => { const items = analyzeSiblings(ctx); addRisks(items, '兄弟', ctx); return items; })() },
+    { dimension: '田宅', items: (() => { const items = analyzeProperty(ctx); addRisks(items, '田宅', ctx); return items; })() },
+    { dimension: '晚年', items: (() => { const items = analyzeLaterLife(ctx); addRisks(items, '晚年', ctx); return items; })() },
   ];
 
   return { dimensions, rating: computeRating(ctx) };
+}
+
+
+/** 从 JSON 加载风险项，匹配条件后追加入 items */
+function addRisks(items: AnalysisItem[], dimName: string, ctx: SharedContext): void {
+  const dimKey: Record<string,string> = {'人际':'benefactors','晚年':'later-life','兄弟':'siblings','田宅':'property'};
+  const key = dimKey[dimName] || dimName;
+  try {
+    const { readFileSync } = require('fs');
+    const { join } = require('path');
+    const data = JSON.parse(readFileSync(join(__dirname, 'content', key + '.json'), 'utf-8'));
+    const risks = data.risks;
+    if (!risks) return;
+    for (const [name, rule] of Object.entries(risks) as any) {
+      if (rule.condition && matchRiskCond(rule.condition, ctx)) {
+        items.push({ level: '参考', layer1: rule.l1 || '', layer2: rule.l2 || '', layer3: rule.l3 || '' });
+      }
+    }
+  } catch { /* risks are optional, skip on any error */ }
+}
+
+function matchRiskCond(cond: string, ctx: SharedContext): boolean {
+  return cond.split(/\s+AND\s+/i).every(p => {
+    const trimmed = p.trim();
+    if (trimmed.includes(' OR ')) {
+      return trimmed.split(/\s+OR\s+/i).some(orPart => matchRiskCond(orPart.trim(), ctx));
+    }
+    const [path, val] = trimmed.split('.');
+    const parts = path.split('.');
+    let obj: any = ctx;
+    for (const k of parts) obj = obj?.[k];
+    if (Array.isArray(obj)) {
+      if (val === '>0') return obj.length > 0;
+      return String(obj.length) === val;
+    }
+    if (typeof obj === 'object' && obj !== null && 'strength' in obj) return obj.strength === val;
+    if (typeof obj === 'boolean') return obj === (val === 'true');
+    return String(obj) === val;
+  });
 }
 
 function computeRating(ctx: SharedContext): { grade: string; summary: string } {
