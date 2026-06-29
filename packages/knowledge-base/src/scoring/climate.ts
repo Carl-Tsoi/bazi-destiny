@@ -23,7 +23,7 @@ let _activeVersion = 0;
 /** 加载指定版本的气候数据 */
 export function loadVersion(version: number): ClimateData {
   if (version === _activeVersion && _active) return _active;
-  const path = join(__dirname, `climate-coeff-v${version}.json`);
+  const path = join(__dirname, '..', `climate-coeff-v${version}.json`);
   const json = JSON.parse(readFileSync(path, 'utf-8'));
   _active = (json.data ?? json) as ClimateData;
   _activeVersion = version;

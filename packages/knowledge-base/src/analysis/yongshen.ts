@@ -18,15 +18,15 @@ import { methodTiaoHou } from './method-tiaohou.js';
 import { methodFuYi } from './method-fuyi.js';
 import { methodTongGuan } from './method-tongguan.js';
 import { methodBingYao } from './method-bingyao.js';
-import type { ScoreResult } from './analysis/types.js';
+import type { ScoreResult } from './types.js';
 
-import { zipingEngine } from './engines/ziping.js';
-import { ditiansuiEngine } from './engines/ditiansui.js';
-import { qiongtongEngine } from './engines/qiongtong.js';
-import { shenfengEngine } from './engines/shenfeng.js';
-import { yuanhaiEngine } from './engines/yuanhai.js';
-import { sanmingEngine } from './engines/sanming.js';
-import type { LayeredContext } from './engines/types.js';
+import { zipingEngine } from '../engines/ziping.js';
+import { ditiansuiEngine } from '../engines/ditiansui.js';
+import { qiongtongEngine } from '../engines/qiongtong.js';
+import { shenfengEngine } from '../engines/shenfeng.js';
+import { yuanhaiEngine } from '../engines/yuanhai.js';
+import { sanmingEngine } from '../engines/sanming.js';
+import type { LayeredContext } from '../engines/types.js';
 
 const WUXING: Record<string, string> = {
   '甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水',

@@ -5,7 +5,7 @@
  * 在子平格局+滴天髓平衡后运行。
  */
 import type { LayeredContext, EngineResult } from './types.js';
-import { methodTiaoHou } from '../method-tiaohou.js';
+import { methodTiaoHou } from '../analysis/method-tiaohou.js';
 
 export function qiongtongEngine(ctx: LayeredContext): EngineResult {
   const pillars = ctx.base.pillars;

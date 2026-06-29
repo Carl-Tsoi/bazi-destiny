@@ -5,10 +5,10 @@
  * 不是平级投票，而是逐层精炼。
  */
 import type { BaziChart } from '@bazi-destiny/core';
-import type { FuYiOutput } from '../method-fuyi.js';
-import type { TiaoHouOutput } from '../method-tiaohou.js';
-import type { TongGuanOutput } from '../method-tongguan.js';
-import type { BingYaoOutput } from '../method-bingyao.js';
+import type { FuYiOutput } from '../analysis/method-fuyi.js';
+import type { TiaoHouOutput } from '../analysis/method-tiaohou.js';
+import type { TongGuanOutput } from '../analysis/method-tongguan.js';
+import type { BingYaoOutput } from '../analysis/method-bingyao.js';
 
 /** 单引擎输出 */
 export interface EngineResult {

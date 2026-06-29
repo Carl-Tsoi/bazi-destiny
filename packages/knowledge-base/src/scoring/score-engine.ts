@@ -3,8 +3,8 @@
  * 输入: ChartResult (L2)
  * 输出: ScoreResult
  */
-import { calculatePower } from '../power-distribution.js';
-import { activeVersion } from '../climate.js';
+import { calculatePower } from './power-distribution.js';
+import { activeVersion } from './climate.js';
 import type { ChartResult, ScoreResult, ElementScores } from '../analysis/types.js';
 
 export function scoreChart(chart: ChartResult): ScoreResult {

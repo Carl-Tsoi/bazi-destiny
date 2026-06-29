@@ -3,8 +3,8 @@
  * 输入: ChartResult (L2) + ScoreResult (L3)
  * 输出: AnalysisResult
  */
-import { determineYongShen } from '../yongshen.js';
-import { judgeDayun } from '../dayun-judge.js';
+import { determineYongShen } from './yongshen.js';
+import { judgeDayun } from './dayun-judge.js';
 import type { ChartResult, ScoreResult, AnalysisResult, AnalysisOptions } from './types.js';
 
 export async function analyzeChart(

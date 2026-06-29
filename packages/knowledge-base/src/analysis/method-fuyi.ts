@@ -4,7 +4,7 @@
  * 输入: 已计分结果 (ScoreResult from L3)
  * 输出: 扶抑用神
  */
-import type { ScoreResult } from './analysis/types.js';
+import type { ScoreResult } from './types.js';
 
 const ELEMENT_ORDER = ['木','火','土','金','水'];
 
