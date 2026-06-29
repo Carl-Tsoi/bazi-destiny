@@ -235,29 +235,28 @@ export async function generateBaziReport(
 
   lines.push('');
 
-  // ═══ 四、十神心性 ═══
-  lines.push('## 四、十神心性');
+  // ═══ 四、十神分布 ═══
+  lines.push('## 四、十神分布');
   lines.push('');
-  const tenGods = ['正官','七杀','正印','偏印','食神','伤官','正财','偏财','比肩','劫财'];
-  const foundGods: string[] = [];
-  for (const [, p] of Object.entries(bazi.pillars)) {
-    if (p.shishen && p.shishen !== '日主' && !foundGods.includes(p.shishen)) foundGods.push(p.shishen);
-  }
-  const relations: Record<string,string> = {
-    '食神':'才华技艺，温和表达，有艺术品味','伤官':'聪明叛逆，不拘一格，创造力强但易得罪人',
-    '正财':'务实稳重，勤俭持家，对金钱敏感','偏财':'大方豪爽，善抓机遇，消费欲望强',
-    '正官':'正直自律，重视名誉，有管理才能','七杀':'果断刚毅，有冒险精神，竞争意识强',
-    '正印':'温厚仁慈，好学善思，得长辈助','偏印':'精明多谋，独特视角，第六感强',
-    '比肩':'独立自主，平等互助，不善依赖','劫财':'重情重义，竞争意识，社交能力强'
-  };
-  for (const g of foundGods) {
-    if (relations[g]) lines.push(`- **${g}**: ${relations[g]}`);
+  const wxMap3: Record<string,string> = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
+  const ORDER3 = ['木','火','土','金','水'];
+  const dayEl3 = wxMap3[bazi.pillars.日柱.gan] ?? '';
+  const dayIdx3 = ORDER3.indexOf(dayEl3);
+  const shishenEl = (ss:string) => { if(ss.includes('比')||ss.includes('劫')) return dayEl3; if(ss.includes('食')||ss.includes('伤')) return ORDER3[(dayIdx3+1)%5]; if(ss.includes('财')) return ORDER3[(dayIdx3+2)%5]; if(ss.includes('官')||ss.includes('杀')) return ORDER3[(dayIdx3+3)%5]; if(ss.includes('印')) return ORDER3[(dayIdx3+4)%5]; return ''; };
+  const jiShen = yongShenResult.final.jiShen;
+  const xiShen = yongShenResult.final.xiShen;
+  lines.push('| 柱 | 天干 | 十神 | 五行 | 喜忌 |');
+  lines.push('|------|------|------|------|------|');
+  for (const [k, p] of Object.entries(bazi.pillars)) {
+    const el = shishenEl(p.shishen);
+    const tag = !el ? '' : jiShen.includes(el) ? '忌' : xiShen.includes(el) ? '喜' : '—';
+    lines.push(`| ${k} | ${colored(p.gan)} | ${p.shishen} | ${el||'—'} | ${tag} |`);
   }
   lines.push('');
 
   // ═══ 十、大运详析
   const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
-  lines.push('## 十、大运详析');
+  lines.push('## 十一、大运详析');
   lines.push('');
   lines.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
   lines.push('|------|------|------------|------------|-----------|');
@@ -324,7 +323,7 @@ export async function generateBaziReport(
   }
 
     // ═══ 十一、趋吉避凶 ═══
-  lines.push('## 十一、趋吉避凶');
+  lines.push('## 十二、趋吉避凶');
   lines.push('');
   const directionMap: Record<string,string> = {'木':'东方','火':'南方','土':'中央/本地','金':'西方','水':'北方'};
   const colorMap: Record<string,string> = {'木':'绿色/青色','火':'红色/紫色','土':'黄色/棕色','金':'白色/金色','水':'黑色/蓝色'};
