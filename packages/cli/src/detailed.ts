@@ -375,9 +375,10 @@ export async function generateBaziReport(
   if (!birthInfo?.skipAi) {
     const aiData = (precomputed as any)?.aiResult;
     if (aiData?.yuanju) {
-      lines.push('### 原局分析'); lines.push(''); lines.push(aiData.yuanju); lines.push('');
-      if (aiData.dayun) { lines.push('### AI解读'); lines.push(''); lines.push(aiData.dayun); lines.push(''); }
-      if (aiData.liunian) { lines.push('### AI解读'); lines.push(''); lines.push(aiData.liunian); lines.push(''); }
+      const clean = (s: string) => s.replace(/^###[^\n]*\n?/gm, '').trim();
+      lines.push('### 原局分析'); lines.push(''); lines.push(clean(aiData.yuanju)); lines.push('');
+      if (aiData.dayun) { lines.push('### 大运解读'); lines.push(''); lines.push(clean(aiData.dayun)); lines.push(''); }
+      if (aiData.liunian) { lines.push('### 流年解读'); lines.push(''); lines.push(clean(aiData.liunian)); lines.push(''); }
     }
   }
 
