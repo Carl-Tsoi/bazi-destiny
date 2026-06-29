@@ -1,14 +1,17 @@
-/** 贵人引擎 */
-import type { SpecContext } from './types.js';
-
-export function benefactorsEngine(ctx: SpecContext): string[] {
-  const b: string[] = [];
-  const tianYi:Record<string,string[]>={甲:['丑','未'],乙:['子','申'],丙:['亥','酉'],丁:['亥','酉'],戊:['丑','未'],己:['子','申'],庚:['丑','未'],辛:['午','寅'],壬:['卯','巳'],癸:['卯','巳']};
-  const tyZhis=tianYi[ctx.dayGan]??[];
-  const tyMatch=Object.entries(ctx.ps).filter(([,p])=>tyZhis.includes(p.zhi));
-  if (tyMatch.length>0) b.push(`天乙贵人临${tyMatch.map(([k])=>k).join('、')}。一生遇难有助，关键时刻总有贵人。`);
-  else b.push('**天乙贵人不临**：命中无贵人星，凡事靠自己。多行善事广结人脉弥补。');
-  if (ctx.yins.length>0) b.push('印星为喜，多得长辈、师长提携。《渊海子平》"印绶者，生我者也"。');
-  if (ctx.biJie.length>0&&ctx.isWeak) b.push('比劫帮身，朋友同辈中有贵人。');
-  return b;
+/**
+ * 专项引擎: 人际 (8/11)
+ */
+import type { SharedContext } from './shared/context.js';
+import type { AnalysisItem, SpecContext } from './types.js';
+import { readFileSync } from 'fs'; import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+let _c: any = null; function C(): any { if(!_c) _c=JSON.parse(readFileSync(join(__dirname,'content','benefactors.json'),'utf-8')); return _c; }
+export function benefactorsEngine(ctx:SpecContext):string[]{return ['人际分析需结合具体命局。'];}
+export function analyzeBenefactors(ctx:SharedContext):AnalysisItem[]{
+  const items:AnalysisItem[]=[];
+  const rules=C();
+    if(ctx.peers.present && ctx.xiShen.includes(ctx.peers.positions.join(','))){ const r=rules.peersGood; if(r)items.push({level:'确定',layer1:r.l1||'',layer2:r.l2||'',layer3:r.l3||''}); }
+  if(ctx.peers.present && !ctx.xiShen.includes(ctx.peers.positions.join(','))){ const r=rules.peersBad; if(r)items.push({level:'确定',layer1:r.l1||'',layer2:r.l2||'',layer3:r.l3||''}); }
+  if(ctx.outputStars.present){ const r=rules.outputGood; if(r)items.push({level:'确定',layer1:r.l1||'',layer2:r.l2||'',layer3:r.l3||''}); }
+  return items;
 }

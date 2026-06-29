@@ -1,17 +1,11 @@
-/** 财运引擎 */
-import type { SpecContext } from './types.js';
-
-export function wealthEngine(ctx: SpecContext): string[] {
-  const w: string[] = [];
-  if (ctx.caiStars.length>0) {
-    w.push(`财星透出（${ctx.caiStars.map(c=>`${c.pos}${c.gan}${c.zhi}(${c.shishen})`).join('、')}），有求财意识与理财能力。`);
-    if (ctx.isStrong) w.push('《子平真诠》"身强财旺，富格"。身强可担财，求财能力强。正财宜稳健储蓄，偏财可投资。');
-    else w.push('身弱财旺，《神峰通考》言此"富屋贫人"。财多身弱反为财累，有钱也守不住。宜比劫运帮身担财。');
-  } else w.push('**财星全无**：不擅理财，缺乏赚钱敏锐度。靠死工资过活，难有意外之财。宜食伤生财（技术变现）弥补。');
-  if (ctx.foodHurtStars.length>0&&ctx.caiStars.length>0) w.push('食伤生财，财有源头如活水。善于将创意技术转化为财富，适合自主创业或副业。');
-  if (ctx.biJie.length>=3) {
-    if (ctx.isStrong) w.push('比劫林立克财，破财风险大。不宜合伙投资、担保借贷，朋友借钱需谨慎。');
-    else w.push('比劫帮身，可通过合作方式求财。单打独斗不如团队作战。');
-  }
-  return w;
-}
+/**
+ * 专项引擎: 财运 (3/11)
+ */
+import type { SharedContext } from './shared/context.js';
+import type { AnalysisItem, SpecContext } from './types.js';
+import { readFileSync } from 'fs'; import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+let _c: any = null; function C(): any { if(!_c) _c=JSON.parse(readFileSync(join(__dirname,'content','wealth.json'),'utf-8')); return _c; }
+function match(cond:string, ctx:SharedContext):boolean{return cond.split(/\s+AND\s+/i).every(p=>{const[path,val]=p.trim().split('.');let o:any=ctx;for(const k of path.split('.'))o=o?.[k];return typeof o==='object'&&'strength'in o?o.strength===val:String(o)===val});}
+export function wealthEngine(ctx:SpecContext):string[]{const c:string[]=[];if(ctx.caiStars.length>0)c.push('财星透出，有理财意识。');else c.push('财星不显，需大运引出财源。');if(ctx.foodHurtStars.length>0)c.push('食伤生财，有技术变现能力。');return c;}
+export function analyzeWealth(ctx:SharedContext):AnalysisItem[]{const items:AnalysisItem[]=[];for(const[name,rule]of Object.entries(C().patterns||{})as any){if(rule.condition&&match(rule.condition,ctx)){items.push({level:'确定',layer1:rule.l1||'',layer2:rule.l2||'',layer3:rule.l3||''});}}return items;}

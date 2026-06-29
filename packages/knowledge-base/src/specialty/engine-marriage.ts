@@ -1,24 +1,19 @@
-/** 婚姻引擎 */
-import type { SpecContext } from './types.js';
-
-export function marriageEngine(ctx: SpecContext): string[] {
-  const m: string[] = [];
-  m.push(`日支${ctx.dayZhi}为夫妻宫。`);
-  if (['子','午','卯','酉'].includes(ctx.dayZhi)) m.push(`日坐四正桃花（${ctx.dayZhi}），配偶外貌气质出众。但桃花主动荡，感情需经营，否则外缘干扰大。`);
-  if (ctx.isMale) {
-    const ws=ctx.caiStars.filter(c=>c.shishen.includes('财'));
-    if (ws.length>0) {
-      m.push(`男命财星为妻，${ws.map(c=>`${c.pos}${c.gan}${c.zhi}`).join('、')}代表妻缘。`);
-      if (ws.length>1) m.push('财星多现，异性缘多，易有感情纠葛。早婚波折，宜晚成家。');
-    } else m.push('财星全无，男命无妻星。婚姻需大运财星引动，或日支夫妻宫得力方有良缘。');
-  } else {
-    const ss=[...ctx.officials,...ctx.killers];
-    if (ss.length>0) {
-      m.push(`女命官杀为夫，${ss.map(c=>`${c.pos}${c.gan}${c.zhi}`).join('、')}代表夫缘。`);
-      if (ss.length>1) m.push('官杀混杂，感情经历丰富。正官为夫七杀为情人，需明辨良缘。');
-    } else m.push('**官杀全无**，《渊海子平》云女命无官杀则夫星不显。婚姻缘分薄，需大运引动。');
-  }
-  const mz=ctx.monthZhi;const dz=ctx.dayZhi;
-  if ((mz+dz==='子午'||mz+dz==='午子'||mz+dz==='卯酉'||mz+dz==='酉卯')) m.push('⚠ 月支冲日支（夫妻宫），《滴天髓》"夫妻宫逢冲，婚姻不顺"。易因外部因素感情破裂。');
-  return m;
+/**
+ * 专项引擎: 婚姻 (4/11)
+ */
+import type { SharedContext } from './shared/context.js';
+import type { AnalysisItem, SpecContext } from './types.js';
+import { readFileSync } from 'fs'; import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+let _c: any = null; function C(): any { if(!_c) _c=JSON.parse(readFileSync(join(__dirname,'content','marriage.json'),'utf-8')); return _c; }
+export function marriageEngine(ctx:SpecContext):string[]{const c:string[]=[];c.push('婚姻需综合分析配偶星和夫妻宫。');return c;}
+export function analyzeMarriage(ctx:SharedContext):AnalysisItem[]{
+  const items:AnalysisItem[]=[];
+  const sp=ctx.spousePalace,ssKey=ctx.officials.strength==='强'||ctx.wealthStars.strength==='强'?'强':ctx.officials.present||ctx.wealthStars.present?'一般':'弱';
+  const ss=C().spouseStar?.[ssKey]; if(ss){items.push({level:'确定',layer1:ss.l1,layer2:ss.l2,layer3:ss.l3});}
+  const gd=C().gender?.[ctx.gender]; if(gd){items.push({level:'确定',layer1:gd.l1,layer2:gd.l2,layer3:gd.l3});}
+  if(sp.isYongShen){const p=C().spousePalace?.['用神'];if(p)items.push({level:'确定',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
+  else if(sp.isJiShen){const p=C().spousePalace?.['忌神'];if(p)items.push({level:'确定',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
+  if(sp.clashes.length>0){const p=C().spousePalace?.['逢冲'];if(p)items.push({level:'参考',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
+  return items;
 }
