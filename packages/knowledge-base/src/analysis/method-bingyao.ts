@@ -92,28 +92,28 @@ export function methodBingYao(input: BingYaoInput): BingYaoOutput | null {
     // 比劫旺
     if (isTaiWang) {
       yao = xieBing;
-      yaoReason = `全局扫描：比劫${bingEl}过旺为病(得分${bingScore}，占比${Math.round(bingScore/totalScore*100)}%)，太旺不宜克，取${yao}(食伤泄秀)为药。`;
+      yaoReason = `全局扫描：比劫${bingEl}过旺为病(得分${bingScore.toFixed(1)}，占比${Math.round(bingScore/totalScore*100)}%)，太旺不宜克，取${yao}(食伤泄秀)为药。`;
     } else {
       yao = keBing;
-      yaoReason = `全局扫描：比劫${bingEl}偏旺为病(得分${bingScore}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(官杀制比)为药。`;
+      yaoReason = `全局扫描：比劫${bingEl}偏旺为病(得分${bingScore.toFixed(1)}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(官杀制比)为药。`;
     }
   } else if (bingEl === shengWo) {
     // 印旺
     yao = keBing;
-    yaoReason = `全局扫描：印星${bingEl}过旺为病(得分${bingScore}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(财破印)为药。`;
+    yaoReason = `全局扫描：印星${bingEl}过旺为病(得分${bingScore.toFixed(1)}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(财破印)为药。`;
   } else if (bingEl === woSheng) {
     // 食伤旺
     if (isTaiWang) {
       yao = xieBing;
-      yaoReason = `全局扫描：食伤${bingEl}太旺为病(得分${bingScore}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(食伤生财)为药。`;
+      yaoReason = `全局扫描：食伤${bingEl}太旺为病(得分${bingScore.toFixed(1)}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(食伤生财)为药。`;
     } else {
       yao = keBing;
-      yaoReason = `全局扫描：食伤${bingEl}偏旺泄身为病(得分${bingScore}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(印制食伤)为药。`;
+      yaoReason = `全局扫描：食伤${bingEl}偏旺泄身为病(得分${bingScore.toFixed(1)}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(印制食伤)为药。`;
     }
   } else if (bingEl === woKe) {
     // 财旺
     yao = keBing;
-    yaoReason = `全局扫描：财星${bingEl}过旺耗身为病(得分${bingScore}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(比劫帮身制财)为药。`;
+    yaoReason = `全局扫描：财星${bingEl}过旺耗身为病(得分${bingScore.toFixed(1)}，占比${Math.round(bingScore/totalScore*100)}%)，取${yao}(比劫帮身制财)为药。`;
   } else {
     return null;
   }
