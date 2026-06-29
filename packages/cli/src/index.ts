@@ -13,8 +13,9 @@ import { BaziEngine } from '@bazi-destiny/engine-bazi';
 import { renderBazi } from './ascii.js';
 import { runSensitivity } from './sensitivity.js';
 import { cite, scoreChart, analyzeChart, analyzeAllDimensions } from '@bazi-destiny/knowledge-base';
-import type { ChartResult, SpecialtyResultV2 } from '@bazi-destiny/knowledge-base';
+import type { ChartResult } from '@bazi-destiny/knowledge-base';
 import { generateBaziReport, generateScoringReport } from './detailed.js';
+import type { PrecomputedData } from './types.js';
 import { homedir } from 'os';
 import { join, dirname } from 'path';
 
@@ -106,7 +107,8 @@ program
         }
       }
 
-      // ═══ L3+L4: 计分 + 分析（编排器统一执行，不再在Engine或报告中重复计算） ═══
+      // ═══ L3+L4+L5: 计分 + 分析 + 专项（编排器统一执行） ═══
+      let precomputed: PrecomputedData | undefined;
       if (outputs.bazi) {
         const bazi = outputs.bazi as Record<string, unknown>;
         const chart: ChartResult = {
@@ -135,8 +137,8 @@ program
           age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(),
         });
 
-        // 预计算结果，传给报告生成器避免重复计算
-        (bazi as any)._precomputed = {
+        // 预计算结果（类型安全），传给报告生成器避免重复计算
+        precomputed = {
           specialty,
           yongShenResult: {
             tiaohou: analysis.tiaohou,
@@ -201,7 +203,7 @@ program
 
       // Scoring process report
       if (options.scoring && outputs.bazi) {
-        const scoringReport = await generateScoringReport(outputs.bazi as any, { datetime, location: `${birthInfo.latitude}, ${birthInfo.longitude}`, gender: birthInfo.gender, name: options.name as string || '' }, (outputs.bazi as any)._precomputed);
+        const scoringReport = await generateScoringReport(outputs.bazi as any, { datetime, location: `${birthInfo.latitude}, ${birthInfo.longitude}`, gender: birthInfo.gender, name: options.name as string || '' }, precomputed!);
         if (options.output) {
           fs.writeFileSync(`${(options.output as string).replace(/\.(txt|json)$/, '')}-scoring.md`, scoringReport, 'utf-8');
           console.log(`Saved: ${(options.output as string).replace(/\.(txt|json)$/, '')}-scoring.md`);
@@ -217,7 +219,7 @@ program
           name: options.name as string || '',
           skipAi: !(options.ai as boolean),
         };
-        const baziReport = await generateBaziReport(outputs.bazi as any, birthInfoObj, (outputs.bazi as any)._precomputed);
+        const baziReport = await generateBaziReport(outputs.bazi as any, birthInfoObj, precomputed!);
 
         if (options.output) {
           const base = (options.output as string).replace(/\.(txt|json)$/, '');
@@ -236,7 +238,7 @@ program
           gender: birthInfo.gender,
           name: options.name as string || '',
           skipAi: !(options.ai as boolean),
-        }, (outputs.bazi as any)._precomputed);
+        }, precomputed!);
         if (options.output) {
           const reportPath = (options.output as string).replace(/\.(txt|json)$/, '') + '-report.md';
           fs.writeFileSync(reportPath, baziReport, 'utf-8');

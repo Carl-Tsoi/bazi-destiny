@@ -146,7 +146,7 @@ function baziDimension(
 export async function generateBaziReport(
   bazi: BaziChart,
   birthInfo?: { datetime: string; location: string; gender: string; name?: string; skipAi?: boolean },
-  precomputed?: { yongShenResult?: YongShenResult; score?: { dayStrength: string; dayScore: number; elementScores: Record<string, number>; ziDang: number; yiDang: number } },
+  precomputed?: import('./types.js').PrecomputedData,
 ): Promise<string> {
   const lines: string[] = [];
   const n = now();
@@ -215,7 +215,7 @@ export async function generateBaziReport(
 
   // 五行力量
   const scores = yongShenResult.fuyi.elementScores;
-  const scoreEntries = Object.entries(scores).sort(([, a], [, b]) => b - a);
+  const scoreEntries = (Object.entries(scores) as [string, number][]).sort((a, b) => b[1] - a[1]);
   const clrMap: Record<string, string> = { '木': '#4CAF50', '火': '#F44336', '土': '#8B4513', '金': '#DAA520', '水': '#2196F3' };
   const scoreLine = scoreEntries.map(([el, v]) => `<span style="color:${clrMap[el] ?? '#000'}">${el}${v}</span>`).join('  ');
   lines.push('**五行力量**: ' + scoreLine + ` | 日主${yongShenResult.fuyi.dayScore}分`);

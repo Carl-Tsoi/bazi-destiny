@@ -17,7 +17,7 @@ async function setupTestChart() {
     datetime: '1985-12-09T10:30', latitude: 0, longitude: 0,
     timezone: 'Asia/Shanghai', gender: 'M',
   });
-  const b = r.data!;
+  const b = (r as any).data;
   const chart: ChartResult = {
     pillars: b.pillars as ChartResult['pillars'],
     dayun: b.dayun as ChartResult['dayun'],

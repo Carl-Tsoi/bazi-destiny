@@ -14,7 +14,7 @@ function now(): string {
 export async function generateScoringReport(
   bazi: BaziChart,
   birthInfo?: { datetime: string; location: string; gender: string; name?: string; skipAi?: boolean },
-  precomputed?: { yongShenResult?: YongShenResult },
+  precomputed?: import('./types.js').PrecomputedData,
 ): Promise<string> {
   const lines: string[] = [];
   const n = now();
@@ -97,9 +97,9 @@ export async function generateScoringReport(
 
   // ═══ 四、汇总 ════════════════════════════════════
   const scores = yongShenResult.fuyi.elementScores;
-  const se = Object.entries(scores).sort(([, a], [, b]) => b - a);
+  const se = (Object.entries(scores) as [string, number][]).sort((a, b) => b[1] - a[1]);
   const clrMap: Record<string, string> = { '木': '#4CAF50', '火': '#F44336', '土': '#8B4513', '金': '#DAA520', '水': '#2196F3' };
-  const sl = se.map(([el, v]) => `<span style="color:${clrMap[el] ?? '#000'}">${el}${v.toFixed(1)}</span>`).join('  ');
+  const sl = se.map((e) => `<span style="color:${clrMap[e[0] as string] ?? '#000'}">${e[0]}${(e[1] as number).toFixed(1)}</span>`).join('  ');
   lines.push('## 四、汇总');
   lines.push('');
   lines.push(`**五行力量**: ${sl}`);
@@ -114,7 +114,7 @@ export async function generateScoringReport(
   lines.push('');
   lines.push('| 天干 | 坐支 | 气候系数 | 根气分 | 总得分 |');
   lines.push('|------|------|---------|-------|-------|');
-  for (const d of yongShenResult.fuyi.details.filter(d => d.startsWith('天干'))) {
+  for (const d of yongShenResult.fuyi.details.filter((d: string) => d.startsWith('天干'))) {
     const m = d.match(/天干(.)\(.\): (.+)=([\d.]+)/);
     if (m) {
       const gan = m[1], calc = m[2], total = m[3];
@@ -133,7 +133,7 @@ export async function generateScoringReport(
   lines.push('');
   lines.push('| 柱位 | 地支 | 五行 | 基础分 | 气候系数 | 实际得分 |');
   lines.push('|------|------|------|-------|---------|---------|');
-  for (const d of yongShenResult.fuyi.details.filter(d => d.startsWith('地支') && !d.includes('六合') && !d.includes('半合') && !d.includes('拱合') && !d.includes('三合') && !d.includes('三会'))) {
+  for (const d of yongShenResult.fuyi.details.filter((d: string) => d.startsWith('地支') && !d.includes('六合') && !d.includes('半合') && !d.includes('拱合') && !d.includes('三合') && !d.includes('三会'))) {
     const m = d.match(/地支(.)\(.\) ?(.+)?: (\d+)×([\d.]+)=([\d.]+)/);
     if (m) {
       const zhi = m[1], label = m[2] || '', base = m[3], wt = m[4], pts = m[5];
