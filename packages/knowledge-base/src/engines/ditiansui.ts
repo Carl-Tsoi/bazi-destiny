@@ -22,8 +22,8 @@ export function ditiansuiEngine(ctx: LayeredContext): EngineResult {
   const isExtremeStrong = dayScore >= totalScore * 0.7;
 
   let special = false, specialType = '';
-  if (isExtremeWeak) { special = true; specialType = `真从格:日主${dayEl}极弱(${dayScore}分),${Object.entries(scores).sort(([,a],[,b])=>b-a)[0][0]}一方独大`; }
-  else if (isExtremeStrong) { special = true; specialType = `专旺格:日主${dayEl}极强(${dayScore}分,占比${Math.round(dayScore/totalScore*100)}%)`; }
+  if (isExtremeWeak) { special = true; specialType = `真从格:日主${dayEl}极弱(${dayScore.toFixed(1)}分),${Object.entries(scores).sort(([,a],[,b])=>b-a)[0][0]}一方独大`; }
+  else if (isExtremeStrong) { special = true; specialType = `专旺格:日主${dayEl}极强(${dayScore.toFixed(1)}分,占比${Math.round(dayScore/totalScore*100)}%)`; }
 
   const balanceYong = fuyi.yongShen; //扶抑用神
 
