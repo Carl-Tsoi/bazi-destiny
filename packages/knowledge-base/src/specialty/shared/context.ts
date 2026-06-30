@@ -111,12 +111,16 @@ export function buildContext(
   const dayEl = getEl(dayGan);
   const yongShenAll = [analysis.yongShen, ...analysis.xiShen];
 
-  // 十神存在性
-  const officials = { present: starExists(pillars, ['正官','七杀']) };
-  const seals = { present: starExists(pillars, ['正印','偏印']) };
-  const wealthStars = { present: starExists(pillars, ['正财','偏财']) };
-  const outputStars = { present: starExists(pillars, ['食神','伤官']) };
-  const peers = { present: starExists(pillars, ['比肩','劫财']) };
+  // 十神存在性: 必须出现 + 其五行分数>0 (L3给的分数)
+  const di = ELEMENT_ORDER.indexOf(dayEl);
+  const elScore = (off: number) => score.elementScores[ELEMENT_ORDER[(di + off) % 5]] ?? 0;
+  const mkPresent = (keywords: string[], off: number) => starExists(pillars, keywords) && elScore(off) > 0;
+
+  const officials = { present: mkPresent(['正官','七杀'], 3) };
+  const seals = { present: mkPresent(['正印','偏印'], 4) };
+  const wealthStars = { present: mkPresent(['正财','偏财'], 2) };
+  const outputStars = { present: mkPresent(['食神','伤官'], 1) };
+  const peers = { present: mkPresent(['比肩','劫财'], 0) };
 
   // 五行缺失
   const appeared = new Set<string>();
