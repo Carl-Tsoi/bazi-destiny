@@ -42,6 +42,7 @@ program
   .option('--detailed', 'Generate separate detailed reports for each engine')
   .option('--ai', 'Enable AI narrative generation (disabled by default to save tokens)')
   .option('--scoring', 'Generate detailed scoring process report')
+  .option('--pdf', 'Generate PDF from markdown report (requires --report --output)')
   .action(async (datetime, options) => {
     try {
       // Default to Beijing time; only use coordinates if --true-solar
@@ -286,6 +287,21 @@ program
           const reportPath = `output/${options.name}/report/report.md`;
           fs.writeFileSync(reportPath, baziReport, 'utf-8');
           console.log(`Report saved: ${reportPath}`);
+
+          // PDF 生成
+          if (options.pdf) {
+            const pdfPath = reportPath.replace(/\.md$/, '.pdf');
+            console.log(`Generating PDF...`);
+            const { spawnSync } = await import('child_process');
+            const result = spawnSync('bash', ['-c',
+              `npx md-to-pdf "${reportPath}" --css "body { font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }" --pdf-options '{"format":"A4","margin":{"top":"15mm","bottom":"15mm","left":"15mm","right":"15mm"}}' > "${pdfPath}"`
+            ], { cwd: process.cwd(), stdio: 'inherit', shell: false });
+            if (result.status === 0) {
+              console.log(`PDF saved: ${pdfPath}`);
+            } else {
+              console.log(`PDF generation failed`);
+            }
+          }
         } else {
           console.log(baziReport);
         }
