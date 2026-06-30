@@ -9,7 +9,7 @@ function J():any{return loadContent(CDIR,DIM,'ji');}
 export function laterLifeEngine(ctx:SpecContext):string[]{return[''];};
 export function analyzeLaterLife(ctx:SharedContext):AnalysisItem[]{
   const items:AnalysisItem[]=[];
-  if(ctx.childrenPalace.isYongShen){const t=Y().laterLife;if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
-  else{const t=J().laterLife;if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  if(ctx.childrenPalace.isJiShen){const t=J().laterLife;if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  else{const t=Y().laterLife;if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
   return items;
 }
