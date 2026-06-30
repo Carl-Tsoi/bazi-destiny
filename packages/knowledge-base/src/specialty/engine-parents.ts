@@ -3,18 +3,29 @@
  */
 import type { SharedContext } from './shared/context.js';
 import type { AnalysisItem, SpecContext } from './types.js';
-import { readFileSync } from 'fs'; import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
+import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
+import { loadContent } from './shared/content-loader.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
-let _c: any = null; function C(): any { if(!_c) _c=JSON.parse(readFileSync(join(__dirname,'content','parents.json'),'utf-8')); return _c; }
+const CDIR = join(__dirname, 'content'); const DIM = 'parents';
+function Y():any{return loadContent(CDIR,DIM,'yong');}
+function J():any{return loadContent(CDIR,DIM,'ji');}
 export function parentsEngine(ctx:SpecContext):string[]{return['父母分析需结合具体命局。'];}
 export function analyzeParents(ctx:SharedContext):AnalysisItem[]{
   const items:AnalysisItem[]=[];
-  if(ctx.parentsPalace.isYongShen){const r=C().yearYong;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
-  else if(ctx.parentsPalace.isJiShen){const r=C().yearJi;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
+  // 年柱宫位
+  if(ctx.parentsPalace.isYongShen){const r=Y().year;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
+  else if(ctx.parentsPalace.isJiShen){const r=J().year;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
+  // 印星=母亲
   const sealIsJi=ctx.jiShen.some(j=>ctx.seals.positions.join('').includes(j));
   if(ctx.seals.strength==='强'||ctx.seals.strength==='一般'){
-    if(sealIsJi){const r=C().sealJi;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
-    else{const r=C().sealYong;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
+    if(sealIsJi){const r=J().seal;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
+    else{const r=Y().seal;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
+  }
+  // 财星=父亲
+  const wealthIsJi=ctx.jiShen.some(j=>ctx.wealthStars.positions.join('').includes(j));
+  if(ctx.wealthStars.strength==='强'||ctx.wealthStars.strength==='一般'){
+    if(wealthIsJi){const r=J().wealth;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
+    else{const r=Y().wealth;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
   }
   return items;
 }
