@@ -26,16 +26,19 @@ export function analyzeHealth(ctx:SharedContext):AnalysisItem[]{
       const t=B()['deficient_'+el]||B().deficient; if(t)items.push({level:'参考',layer1:t.l1.replace('{el}',el).replace('{organ}',o),layer2:t.l2.replace('{el}',el),layer3:t.l3.replace('{el}',el)});
     }
   }
-  // 十神健康影响（每个出现的十神输出一条健康建议）
-  const starChecks: Array<{present:boolean; key:string}> = [
-    {present:ctx.officials.present, key:'star_officials'},
-    {present:ctx.seals.present, key:'star_seals'},
-    {present:ctx.wealthStars.present, key:'star_wealth'},
-    {present:ctx.outputStars.present, key:'star_output'},
-    {present:ctx.peers.present, key:'star_peers'},
+  // 十神健康影响：只有元素分>总10%的有力星才输出
+  const ORD=['木','火','土','金','水']; const di=ORD.indexOf(ctx.dayEl);
+  function es(off:number):number{return ctx.elementScores[ORD[(di+off)%5]]||0;}
+  function strong(off:number):boolean{return es(off)>ctx.totalScore*0.1;}
+  const starChecks: Array<{show:boolean; key:string}> = [
+    {show:ctx.officials.present&&strong(3), key:'star_officials'},
+    {show:ctx.seals.present&&strong(4), key:'star_seals'},
+    {show:ctx.wealthStars.present&&strong(2), key:'star_wealth'},
+    {show:ctx.outputStars.present&&strong(1), key:'star_output'},
+    {show:ctx.peers.present&&strong(0), key:'star_peers'},
   ];
   for(const sc of starChecks){
-    if(sc.present){
+    if(sc.show){
       const t=B()[sc.key]; if(t)items.push({level:'参考',layer1:t.l1,layer2:t.l2,layer3:t.l3});
     }
   }
