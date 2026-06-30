@@ -284,13 +284,16 @@ program
           skipAi: !(options.ai as boolean),
         }, precomputed!);
         if (options.output) {
-          const reportPath = `output/${options.name}/report/report.md`;
+          const name = options.name as string || 'report';
+          const reportDir = `output/${name}`;
+          fs.mkdirSync(reportDir, { recursive: true });
+          const reportPath = `${reportDir}/${name}-report.md`;
           fs.writeFileSync(reportPath, baziReport, 'utf-8');
           console.log(`Report saved: ${reportPath}`);
 
           // PDF 生成
           if (options.pdf) {
-            const pdfPath = reportPath.replace(/\.md$/, '.pdf');
+            const pdfPath = `${reportDir}/${name}-report.pdf`;
             console.log(`Generating PDF...`);
             const { spawnSync } = await import('child_process');
             const result = spawnSync('bash', ['-c',
