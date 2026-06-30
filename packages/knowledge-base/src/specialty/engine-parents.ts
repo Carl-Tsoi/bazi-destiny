@@ -16,12 +16,12 @@ export function analyzeParents(ctx:SharedContext):AnalysisItem[]{
   if(ctx.parentsPalace.isYongShen){const r=Y().year;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
   else if(ctx.parentsPalace.isJiShen){const r=J().year;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
   // 印星=母亲 (生我 offset 4)
-  if(ctx.seals.strength==='强'||ctx.seals.strength==='一般'){
+  if(ctx.seals.present){
     if(isStarJi(ctx,4)){const r=J().seal;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
     else{const r=Y().seal;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
   }
   // 财星=父亲 (我克 offset 2)
-  if(ctx.wealthStars.strength==='强'||ctx.wealthStars.strength==='一般'){
+  if(ctx.wealthStars.present){
     if(isStarJi(ctx,2)){const r=J().wealth;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
     else{const r=Y().wealth;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
   }
