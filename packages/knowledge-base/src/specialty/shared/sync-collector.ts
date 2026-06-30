@@ -208,7 +208,18 @@ console.log(`  找到 ${totalKeys} 个已产出 key`);
 
 console.log('📝 生成缺口报告...');
 const report = generateGapReport(reqs, existing);
-writeFileSync(GAPS_FILE, report, 'utf-8');
+
+// 读取已有 GAPS.md，保留 <!-- USER --> 标记后的手动内容
+let existingContent = '';
+if (existsSync(GAPS_FILE)) {
+  existingContent = readFileSync(GAPS_FILE, 'utf-8');
+}
+const userMarker = '<!-- USER -->';
+const userContent = existingContent.includes(userMarker)
+  ? '\n' + userMarker + existingContent.split(userMarker)[1]
+  : '';
+
+writeFileSync(GAPS_FILE, report + userContent, 'utf-8');
 console.log(`  → ${GAPS_FILE}`);
 
 // 统计
