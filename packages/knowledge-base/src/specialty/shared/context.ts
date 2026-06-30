@@ -61,8 +61,7 @@ export interface SharedContext {
   dayGan: string;          // 日主天干 (甲/乙/丙/丁...)
   dayEl: string;           // 日主五行 (木/火/土/金/水)
   dayStrength: string;
-  yongShen: string;
-  xiShen: string[];
+  yongShen: string[];    // 用神(含喜), 第一项为主用神
   jiShen: string[];
   pattern: string;
   dayunContext: DayunContext;
@@ -120,14 +119,14 @@ function analyzeStar(
 }
 
 function analyzePalace(
-  zhi: string, dayEl: string, yongShen: string, xiShen: string[], jiShen: string[],
+  zhi: string, dayEl: string, yongShen: string[], jiShen: string[],
   clashes: string[], combos: string[]
 ): PalaceInfo {
   const zhiEl = ZWX_MAP[zhi] ?? '';
   const tenGod = getPalaceTenGod(zhiEl, dayEl);
   return {
     zhi, tenGod,
-    isYongShen: zhiEl === yongShen || xiShen.includes(zhiEl),
+    isYongShen: yongShen.includes(zhiEl),
     isJiShen: jiShen.includes(zhiEl),
     clashes: clashes.filter(c => c.includes(zhi)),
     combinations: combos.filter(c => c.includes(zhi)),
@@ -257,6 +256,8 @@ export function buildContext(
     }
   }
 
+  const yongShenAll = [analysis.yongShen, ...analysis.xiShen]; // 用神=用+喜
+
   const totalScore = Object.values(score.elementScores).reduce((a:number,b:number)=>a+b,0) || 1;
   const mkStar = (gan:string) => gan
     ? analyzeStar(gan, pillars, allCangGan, score.elementScores[getEl(gan)] ?? 0, totalScore)
@@ -273,18 +274,17 @@ export function buildContext(
       return { ...star, present: peerScore > 0, strength: peerScore > totalScore*0.2 ? '强' : peerScore > totalScore*0.05 ? '一般' : peerScore > 0 ? '弱' : '无' };
     })(),
 
-    spousePalace: analyzePalace(chart.dayZhi, dayEl, analysis.yongShen, analysis.xiShen, analysis.jiShen, clashes, combos),
-    parentsPalace: analyzePalace(chart.pillars.年柱.zhi, dayEl, analysis.yongShen, analysis.xiShen, analysis.jiShen, clashes, combos),
-    childrenPalace: analyzePalace(chart.pillars.时柱.zhi, dayEl, analysis.yongShen, analysis.xiShen, analysis.jiShen, clashes, combos),
-    siblingsPalace: analyzePalace(chart.pillars.月柱.zhi, dayEl, analysis.yongShen, analysis.xiShen, analysis.jiShen, clashes, combos),
+    spousePalace: analyzePalace(chart.dayZhi, dayEl, yongShenAll, analysis.jiShen, clashes, combos),
+    parentsPalace: analyzePalace(chart.pillars.年柱.zhi, dayEl, yongShenAll, analysis.jiShen, clashes, combos),
+    childrenPalace: analyzePalace(chart.pillars.时柱.zhi, dayEl, yongShenAll, analysis.jiShen, clashes, combos),
+    siblingsPalace: analyzePalace(chart.pillars.月柱.zhi, dayEl, yongShenAll, analysis.jiShen, clashes, combos),
 
     elementBalance: analyzeBalance(score.elementScores, chart.pillars),
 
     dayGan: chart.dayGan,
     dayEl,
     dayStrength: score.dayStrength,
-    yongShen: analysis.yongShen,
-    xiShen: analysis.xiShen,
+    yongShen: yongShenAll,
     jiShen: analysis.jiShen,
     pattern: chart.pattern,
     dayunContext: { current, next },

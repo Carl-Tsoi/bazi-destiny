@@ -38,7 +38,7 @@ async function runTests() {
 
   // Test 1: SharedContext has all required fields
   console.log('Test 1: SharedContext fields');
-  const required = ['dayGan','dayEl','dayStrength','yongShen','xiShen','jiShen',
+  const required = ['dayGan','dayEl','dayStrength','yongShen','jiShen',
     'officials','seals','wealthStars','outputStars','peers',
     'spousePalace','parentsPalace','childrenPalace','siblingsPalace',
     'elementBalance','dayunContext','pattern','gender','age'];
@@ -93,8 +93,8 @@ async function runTests() {
   console.log('Test 5: 张耿 specific');
   if (ctx.dayGan === '壬') pass++; else { console.log('  ❌ dayGan should be 壬'); fail++; }
   if (ctx.dayStrength === '身弱') pass++; else { console.log('  ❌ should be 身弱'); fail++; }
-  if (ctx.yongShen === '水') pass++; else { console.log('  ❌ yongShen should be 水'); fail++; }
-  console.log(`  dayGan=壬 dayStrength=身弱 yongShen=水`);
+  if (ctx.yongShen.includes('水')) pass++; else { console.log('  ❌ yongShen should include 水'); fail++; }
+  console.log(`  dayGan=壬 dayStrength=身弱 yongShen=${ctx.yongShen.join(',')}`);
 
   console.log(`\n${fail > 0 ? '❌ FAILED' : '✅ PASSED'} — ${fail} failures`);
 }
