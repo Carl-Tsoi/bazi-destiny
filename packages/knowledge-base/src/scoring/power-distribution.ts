@@ -284,9 +284,17 @@ export function calculatePower(
     }
   }
 
-  // ═══ 13. Floor at 0 ══════════════════════════════
+  // ═══ 13. Floor ═══════════════════════════════════
+  // 负分归0，但八字中实际出现的五行保底0.1（弱而不灭）
+  const appeared = new Set<string>();
+  for (const p of pillars) {
+    appeared.add(WX[p.gan] ?? '');
+    appeared.add(ZWX[p.zhi] ?? '');
+    for (const h of p.canggan) appeared.add(WX[h.stem] ?? '');
+  }
   for (const k of Object.keys(scores)) {
     if ((scores[k] ?? 0) < 0) scores[k] = 0;
+    if (scores[k] === 0 && appeared.has(k)) scores[k] = 0.01;
   }
 
   // ═══ 14. 位置远近调整 ═══════════════════════════
