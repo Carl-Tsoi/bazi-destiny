@@ -17,7 +17,7 @@ export function analyzeMarriage(ctx:SharedContext):AnalysisItem[]{
   // 配偶星: 男命财为妻(offset 2), 女命官为夫(offset 3)
   const spouseOffset = ctx.gender==='M' ? 2 : 3;
   const spouseStar = ctx.gender==='M' ? ctx.wealthStars : ctx.officials;
-  if(spouseStar.strength!=='无'){
+  if(spouseStar.present){
     const ji=isStarJi(ctx, spouseOffset);
     const ss=(ji?J():Y())['spouseStar']; if(ss)items.push({level:'确定',layer1:ss.l1,layer2:ss.l2,layer3:ss.l3});
   }

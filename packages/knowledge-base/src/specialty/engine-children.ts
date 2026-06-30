@@ -12,8 +12,7 @@ function J():any{return loadContent(CDIR,DIM,'ji');}
 export function childrenEngine(ctx:SpecContext):string[]{return['子女分析需结合具体命局。'];}
 export function analyzeChildren(ctx:SharedContext):AnalysisItem[]{
   const items:AnalysisItem[]=[];
-  const os=ctx.outputStars;
-  if(os.strength==='强'||os.strength==='一般'){
+  if(ctx.outputStars.present){
     if(isStarJi(ctx,1)){const r=J().output;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
     else{const r=Y().output;if(r)items.push({level:'确定',layer1:r.l1,layer2:r.l2,layer3:r.l3});}
   }

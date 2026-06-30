@@ -101,7 +101,7 @@ function matchRiskCond(cond: string, ctx: SharedContext): boolean {
       if (val === '>0') return obj.length > 0;
       return String(obj.length) === val;
     }
-    if (typeof obj === 'object' && obj !== null && 'strength' in obj) return obj.strength === val;
+    if (typeof obj === 'object' && obj !== null && 'present' in obj) return obj.present === (val === 'true');
     if (typeof obj === 'boolean') return obj === (val === 'true');
     return String(obj) === val;
   });

@@ -6,24 +6,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'wealth';
 function Y():any{return loadContent(CDIR,DIM,'yong');}
 function J():any{return loadContent(CDIR,DIM,'ji');}
-function strong(s:number,ctx:SharedContext):boolean{const t=Object.values(ctx.elementBalance.scores).reduce((a:number,b:number)=>a+b,0)||1;return s>t*0.1;}
+const ORD=['木','火','土','金','水'];
 export function wealthEngine(ctx:SpecContext):string[]{return[''];};
 export function analyzeWealth(ctx:SharedContext):AnalysisItem[]{
-  const items:AnalysisItem[]=[];
-  // 财星(我克 offset 2)
-  if(ctx.wealthStars.strength!=='无'){
-    const ji=isStarJi(ctx,2),s=strong(ctx.wealthStars.score,ctx);
-    const key='财星_'+(s?'strong':'weak');
-    const t=(ji?J():Y())[key]; if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
-  }
-  // 食伤生财
-  if(ctx.outputStars.strength!=='无'){
-    const ji=isStarJi(ctx,1); const t=(ji?J():Y())['食伤生财'];
-    if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
-  }
-  // 比劫夺财
-  if(ctx.peers.strength==='强'||ctx.peers.strength==='一般'){
-    const t=J()['比劫夺财']; if(t)items.push({level:'参考',layer1:t.l1,layer2:t.l2,layer3:t.l3});
-  }
+  const items:AnalysisItem[]=[]; const di=ORD.indexOf(ctx.dayEl);
+  const total=Object.values(ctx.elementScores).reduce((a,b)=>a+b,0)||1;
+  function elScore(off:number):number{return ctx.elementScores[ORD[(di+off)%5]]||0;}
+  function s(off:number):boolean{return elScore(off)>total*0.1;}
+  if(ctx.wealthStars.present){const ji=isStarJi(ctx,2);const key='财星_'+(s(2)?'strong':'weak');const t=(ji?J():Y())[key];if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  if(ctx.outputStars.present){const ji=isStarJi(ctx,1);const t=(ji?J():Y())['食伤生财'];if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  if(ctx.peers.present){const t=J()['比劫夺财'];if(t)items.push({level:'参考',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
   return items;
 }

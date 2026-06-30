@@ -6,13 +6,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'benefactors';
 function Y():any{return loadContent(CDIR,DIM,'yong');}
 function J():any{return loadContent(CDIR,DIM,'ji');}
-function strong(s:number,ctx:SharedContext):boolean{const t=Object.values(ctx.elementBalance.scores).reduce((a:number,b:number)=>a+b,0)||1;return s>t*0.1;}
+const ORD=['木','火','土','金','水'];
 export function benefactorsEngine(ctx:SpecContext):string[]{return[''];};
 export function analyzeBenefactors(ctx:SharedContext):AnalysisItem[]{
-  const items:AnalysisItem[]=[];
+  const items:AnalysisItem[]=[]; const di=ORD.indexOf(ctx.dayEl);
+  const total=Object.values(ctx.elementScores).reduce((a,b)=>a+b,0)||1;
+  const peerScore=ctx.elementScores[ctx.dayEl]||0; const s=peerScore>total*0.1;
   if(ctx.peers.present){
-    const ji=isStarJi(ctx,0); const s=strong(ctx.peers.score,ctx);
-    const key='peers_'+(s?'strong':'weak');
+    const ji=isStarJi(ctx,0); const key='peers_'+(s?'strong':'weak');
     const t=(ji?J():Y())[key]; if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
   return items;

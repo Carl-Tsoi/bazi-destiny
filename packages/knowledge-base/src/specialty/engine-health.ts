@@ -7,16 +7,17 @@ const CDIR = join(__dirname, 'content'); const DIM = 'health';
 function Y():any{return loadContent(CDIR,DIM,'yong');}
 function J():any{return loadContent(CDIR,DIM,'ji');}
 function B():any{return loadBase(CDIR,DIM);}
-const ORDER=['木','火','土','金','水'];
 export function healthEngine(ctx:SpecContext):string[]{return[''];};
 export function analyzeHealth(ctx:SharedContext):AnalysisItem[]{
-  const items:AnalysisItem[]=[],bal=ctx.elementBalance,organs=B().elementOrgans||{};
-  for(const el of bal.missing){
+  const items:AnalysisItem[]=[],organs=B().elementOrgans||{};
+  const avg=Object.values(ctx.elementScores).filter(v=>v>0).reduce((a,b)=>a+b,0)/(Object.values(ctx.elementScores).filter(v=>v>0).length||1);
+  for(const el of ctx.missingElements){
     const o=organs[el]||el,t=B().deficient;if(t)items.push({level:'确定',layer1:t.l1.replace('{el}',el).replace('{organ}',o),layer2:t.l2.replace('{el}',el),layer3:t.l3.replace('{el}',el)});
   }
-  for(const el of bal.excess){
-    const o=organs[el]||el; const isJi=ctx.jiShen.includes(el);
-    if(isJi){const t=J().excess;if(t)items.push({level:'确定',layer1:t.l1.replace('{el}',el).replace('{organ}',o),layer2:t.l2.replace('{el}',el),layer3:t.l3.replace('{el}',el)});}
+  for(const el of Object.keys(ctx.elementScores)){
+    const v=ctx.elementScores[el]||0; if(v<=avg*2) continue;
+    const o=organs[el]||el;
+    if(ctx.jiShen.includes(el)){const t=J().excess;if(t)items.push({level:'确定',layer1:t.l1.replace('{el}',el).replace('{organ}',o),layer2:t.l2.replace('{el}',el),layer3:t.l3.replace('{el}',el)});}
     else{const t=B().deficient;if(t)items.push({level:'参考',layer1:t.l1.replace('{el}',el).replace('{organ}',o),layer2:t.l2.replace('{el}',el),layer3:t.l3.replace('{el}',el)});}
   }
   return items;
