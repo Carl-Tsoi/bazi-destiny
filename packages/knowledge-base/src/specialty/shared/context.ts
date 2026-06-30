@@ -68,6 +68,7 @@ export interface SharedContext {
   dayunContext: DayunContext;
   gender: 'M' | 'F';
   age: number;
+  mixedOfficials: boolean;  // 官杀混杂：正官+七杀同时存在
 }
 
 // ── 提取函数 ────────────────────────────────────────
@@ -199,6 +200,20 @@ export function buildContext(
   const outputGan = findGanByShishen(['食神','伤官']);
   const peerGan = findGanByShishen(['比肩','劫财']);
 
+  // 官杀混杂检测：正官和七杀同时出现在四柱或藏干
+  const hasMixedOfficials = (() => {
+    let zg = false, qs = false;
+    for (const p of Object.values(pillars)) {
+      if (p.shishen === '正官') zg = true;
+      if (p.shishen === '七杀') qs = true;
+      for (const h of p.canggan) {
+        if (h.tenGod === '正官') zg = true;
+        if (h.tenGod === '七杀') qs = true;
+      }
+    }
+    return zg && qs;
+  })();
+
   // 比劫分=同五行总分-日主天干原始分（日主自己的分不算比劫）
   const dayElScore = score.elementScores[dayEl] ?? 0;
   const cl = (el:string) => getClimate(chart.monthZhi, el);
@@ -275,5 +290,6 @@ export function buildContext(
     dayunContext: { current, next },
     gender: options?.gender ?? 'M',
     age: options?.age ?? 30,
+    mixedOfficials: hasMixedOfficials,
   };
 }

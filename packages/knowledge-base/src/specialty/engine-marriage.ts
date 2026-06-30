@@ -21,6 +21,6 @@ export function analyzeMarriage(ctx:SharedContext):AnalysisItem[]{
   if(sp.isYongShen){const p=Y().spousePalace?.['用神'];if(p)items.push({level:'确定',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
   else if(sp.isJiShen){const p=J().spousePalace?.['忌神'];if(p)items.push({level:'确定',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
   if(sp.clashes.length>0){const p=B().spousePalaceChong;if(p)items.push({level:'参考',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
-  if(B().mixedOfficials&&ctx.officials.present&&ctx.officials.strength!=='弱'){const p=B().mixedOfficials;if(p)items.push({level:'参考',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
+  if(ctx.mixedOfficials){const p=B().mixedOfficials;if(p)items.push({level:'参考',layer1:p.l1,layer2:p.l2,layer3:p.l3});}
   return items;
 }
