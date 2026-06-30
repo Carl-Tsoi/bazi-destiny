@@ -58,11 +58,11 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
 
 // ── 核心函数 ─────────────────────────────────────
 
-async function callClaude(prompt: string): Promise<string> {
+async function callClaude(prompt: string, maxTokens = 1024): Promise<string> {
   const model = process.env.BAZI_LLM_MODEL || 'claude-sonnet-4-6';
   const msg = await anthropic.messages.create({
     model,
-    max_tokens: 1024,
+    max_tokens: maxTokens,
     temperature: 0.3,
     system: `你是一位专业八字命理师。
 
@@ -96,7 +96,7 @@ async function generateYuanju(input: AiInput): Promise<string> {
     specialtySummary: input.specialtySummary,
     wordLimit: p.wordLimit,
   });
-  return callClaude(p.systemPrompt + '\n\n' + userPrompt);
+  return callClaude(p.systemPrompt + '\n\n' + userPrompt, 2048);
 }
 
 async function generateDayun(input: AiInput): Promise<string> {
@@ -111,7 +111,7 @@ async function generateDayun(input: AiInput): Promise<string> {
     dayunInteractions: input.dayunInteractions,
     wordLimit: p.wordLimit,
   });
-  return callClaude(p.systemPrompt + '\n\n' + userPrompt);
+  return callClaude(p.systemPrompt + '\n\n' + userPrompt, 1536);
 }
 
 async function generateLiunian(input: AiInput): Promise<string> {
@@ -125,7 +125,7 @@ async function generateLiunian(input: AiInput): Promise<string> {
     currentDayunContext: input.currentDayunContext,
     wordLimit: p.wordLimit,
   });
-  return callClaude(p.systemPrompt + '\n\n' + userPrompt);
+  return callClaude(p.systemPrompt + '\n\n' + userPrompt, 1536);
 }
 
 /** 并行调用三个 AI 分析，返回结果 */
