@@ -6,11 +6,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'siblings';
 function Y():any{return loadContent(CDIR,DIM,'yong');}
 function J():any{return loadContent(CDIR,DIM,'ji');}
+const ORD=['木','火','土','金','水'];
 export function siblingsEngine(ctx:SpecContext):string[]{return[''];};
 export function analyzeSiblings(ctx:SharedContext):AnalysisItem[]{
-  const items:AnalysisItem[]=[];
+  const items:AnalysisItem[]=[]; const di=ORD.indexOf(ctx.dayEl);
   if(ctx.peers.present){
-    const ji=isStarJi(ctx,0); const t=(ji?J():Y())['peers'];
+    const ji=isStarJi(ctx,0);
+    const peerScore=ctx.elementScores[ctx.dayEl]||0;
+    const total=Object.values(ctx.elementScores).reduce((a,b)=>a+b,0)||1;
+    const s=peerScore>total*0.1;
+    const key='peers_'+(s?'strong':'weak');
+    const t=(ji?J():Y())[key]||(ji?J():Y())['peers'];
     if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
   return items;
