@@ -40,6 +40,7 @@ export interface SharedContext {
 
   // 五行 (L3 直接给)
   elementScores: Record<string, number>;
+  totalScore: number;        // 五行总分
   missingElements: string[];
 
   // 全局 (L3/L4 直接给)
@@ -176,6 +177,7 @@ export function buildContext(
     childrenPalace: analyzePalace(pillars.时柱.zhi, dayEl, yongShenAll, analysis.jiShen, clashes, combos),
     siblingsPalace: analyzePalace(pillars.月柱.zhi, dayEl, yongShenAll, analysis.jiShen, clashes, combos),
     elementScores: score.elementScores,
+    totalScore: Object.values(score.elementScores).reduce((a:number,b:number)=>a+b,0)||1,
     missingElements,
     dayGan, dayEl,
     dayStrength: score.dayStrength,

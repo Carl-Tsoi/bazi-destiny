@@ -10,7 +10,7 @@ const ORD=['木','火','土','金','水'];
 export function propertyEngine(ctx:SpecContext):string[]{return[''];};
 export function analyzeProperty(ctx:SharedContext):AnalysisItem[]{
   const items:AnalysisItem[]=[],di=ORD.indexOf(ctx.dayEl);
-  const total=Object.values(ctx.elementScores).reduce((a,b)=>a+b,0)||1;
+  const total=ctx.totalScore;
   function isStrong(off:number):boolean{return(ctx.elementScores[ORD[(di+off)%5]]||0)>total*0.1;}
   // 印星 → 房产/不动产
   if(ctx.seals.present){
@@ -23,6 +23,11 @@ export function analyzeProperty(ctx:SharedContext):AnalysisItem[]{
     const s=isStrong(2); const ji=isStarJi(ctx,2);
     const key='wealth_'+(s?'strong':'weak');
     const t=(ji?J():Y())[key]; if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});
+  }
+  // 官杀 → 房产法律/贷款/产权
+  if(ctx.officials.present){
+    const ji=isStarJi(ctx,3); const t=(ji?J():Y())['officials'];
+    if(t)items.push({level:'参考',layer1:t.l1,layer2:t.l2,layer3:t.l3});
   }
   return items;
 }

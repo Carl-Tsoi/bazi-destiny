@@ -11,7 +11,7 @@ const ORD=['木','火','土','金','水'];
 export function personalityEngine(ctx:SpecContext):string[]{return[`日主${ctx.dayGan}：身${ctx.dayStrength}。`];}
 export function analyzePersonality(ctx:SharedContext):AnalysisItem[]{
   const items:AnalysisItem[]=[]; const dg=ctx.dayGan, di=ORD.indexOf(ctx.dayEl);
-  const total=Object.values(ctx.elementScores).reduce((a,b)=>a+b,0)||1;
+  const total=ctx.totalScore;
   function elScore(off:number):number{return ctx.elementScores[ORD[(di+off)%5]]||0;}
   function pick(prefix:string,off:number):any{
     const t=isStarJi(ctx,off)?J():Y(); const s=elScore(off)>total*0.1;

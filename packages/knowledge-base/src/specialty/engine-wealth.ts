@@ -10,7 +10,7 @@ const ORD=['木','火','土','金','水'];
 export function wealthEngine(ctx:SpecContext):string[]{return[''];};
 export function analyzeWealth(ctx:SharedContext):AnalysisItem[]{
   const items:AnalysisItem[]=[]; const di=ORD.indexOf(ctx.dayEl);
-  const total=Object.values(ctx.elementScores).reduce((a,b)=>a+b,0)||1;
+  const total=ctx.totalScore;
   function elScore(off:number):number{return ctx.elementScores[ORD[(di+off)%5]]||0;}
   function s(off:number):boolean{return elScore(off)>total*0.1;}
   if(ctx.wealthStars.present){const ji=isStarJi(ctx,2);const key='财星_'+(s(2)?'strong':'weak');const t=(ji?J():Y())[key];if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}

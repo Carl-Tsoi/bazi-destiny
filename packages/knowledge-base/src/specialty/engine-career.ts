@@ -11,7 +11,7 @@ const ORD=['木','火','土','金','水'];
 export function careerEngine(ctx:SpecContext):string[]{return['事业分析需结合命局。'];}
 export function analyzeCareer(ctx:SharedContext):AnalysisItem[]{
   const items:AnalysisItem[]=[],di=ORD.indexOf(ctx.dayEl);
-  const total=Object.values(ctx.elementScores).reduce((a,b)=>a+b,0)||1;
+  const total=ctx.totalScore;
   function es(off:number):number{return ctx.elementScores[ORD[(di+off)%5]]||0;}
   function strong(off:number):boolean{return es(off)>total*0.1;}
 
