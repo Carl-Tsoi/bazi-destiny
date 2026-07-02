@@ -77,19 +77,23 @@ export async function generateBaziReport(
 
   // ── 封面 ──
   L.push('');
-  L.push('┌─────────────────────────────────────────────────────┐');
-  L.push('│                                                     │');
-  L.push('│              八 字 命 理 分 析 报 告                  │');
-  L.push('│           Bazi · Four Pillars of Destiny             │');
-  L.push('│                                                     │');
-  L.push('├─────────────────────────────────────────────────────┤');
-  if (birthInfo?.name) L.push(`│  命主: ${birthInfo.name.padEnd(40)}│`);
-  L.push(`│  性别: ${genderLabel}      年龄: ${String(age).padEnd(3)}岁      日主: ${dayGan}${dayEl.padEnd(4)}│`);
-  L.push(`│  出生: ${(birthInfo?.datetime ?? '').padEnd(40)}│`);
-  L.push(`│  八字: ${pillarOrder.map(k => bazi.pillars[k].gan + bazi.pillars[k].zhi).join(' ').padEnd(40)}│`);
-  L.push(`│  格局: ${(bazi.pattern || '正格').padEnd(40)}│`);
-  L.push(`│  生成: ${n.padEnd(40)}│`);
-  L.push('└─────────────────────────────────────────────────────┘');
+  L.push('# 八字命理分析报告');
+  L.push('#### Bazi · Four Pillars of Destiny');
+  L.push('');
+  L.push('---');
+  L.push('');
+  L.push('| 项目 | 内容 |');
+  L.push('|------|------|');
+  if (birthInfo?.name) L.push(`| 命主 | **${birthInfo.name}** |`);
+  L.push(`| 性别 | ${genderLabel} |`);
+  L.push(`| 出生 | ${birthInfo?.datetime ?? ''}（公历） |`);
+  L.push(`| 八字 | ${pillarOrder.map(k => colored(bazi.pillars[k].gan) + colored(bazi.pillars[k].zhi)).join(' ')} |`);
+  L.push(`| 日主 | ${colored(dayGan)}${dayEl} |`);
+  L.push(`| 格局 | ${bazi.pattern || '正格'} |`);
+  L.push(`| 年龄 | ${age}岁 |`);
+  L.push(`| 生成 | ${n} |`);
+  L.push('');
+  L.push('---');
   L.push('');
 
   // ═══════════════════════════════════════════════════
