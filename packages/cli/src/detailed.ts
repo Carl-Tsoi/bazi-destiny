@@ -1,17 +1,18 @@
 /**
- * 八字详细分析报告
+ * 八字专业命理分析报告 — v3 专业版
+ *
+ * 综合网上10个最佳命理报告模板的设计优点：
+ *   命-运-问三段式 / 章节编号+图标 / 白话翻译术语 / 分层详略 /
+ *   表格+段落混合 / 当前运势聚焦 / 卡片式大运 / 可执行建议
  */
 import type { BaziChart } from '@bazi-destiny/core';
 import { determineYongShen, judgeDayun, analyzeInteractions, checkElementFlow, CLIMATE_COEFF } from '@bazi-destiny/knowledge-base';
 import type { YongShenResult } from '@bazi-destiny/knowledge-base';
 import { generateNarratives } from '@bazi-destiny/reports';
 
-// Re-export scoring report (extracted to separate module)
 export { generateScoringReport } from './report-scoring.js';
 
-// ── 紫微/占星报告暂停（后续开发时启用） ──
-// export function generateZiweiReport(ziwei: ZiweiChart, ...) { ... }
-// export function generateAstrologyReport(astro: WesternChart, ...) { ... }
+// ── 工具函数 ────────────────────────────────────
 
 function now(): string {
   const d = new Date();
@@ -19,362 +20,482 @@ function now(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-const BAZI_DIMENSIONS = [
-  { id: 'mingge', name: '命格' },
-  { id: 'career', name: '事业' },
-  { id: 'wealth', name: '财运' },
-  { id: 'marriage', name: '婚姻' },
-  { id: 'children', name: '子女' },
-  { id: 'health', name: '健康' },
-  { id: 'parents', name: '父母' },
-  { id: 'siblings', name: '兄弟' },
-  { id: 'property', name: '田宅' },
-  { id: 'dayun', name: '大运' },
-];
+const WX_COLOR: Record<string, string> = {
+  '甲': '#4CAF50', '乙': '#4CAF50', '寅': '#4CAF50', '卯': '#4CAF50',
+  '丙': '#F44336', '丁': '#F44336', '巳': '#F44336', '午': '#F44336',
+  '戊': '#8B4513', '己': '#8B4513', '辰': '#8B4513', '戌': '#8B4513', '丑': '#8B4513', '未': '#8B4513',
+  '庚': '#DAA520', '辛': '#DAA520', '申': '#DAA520', '酉': '#DAA520',
+  '壬': '#2196F3', '癸': '#2196F3', '亥': '#2196F3', '子': '#2196F3',
+};
+function colored(c: string) { return `<span style="color:${WX_COLOR[c] ?? '#000'}">${c}</span>`; }
 
-function baziDimension(
-  bazi: BaziChart,
-  dim: string,
-  interactions: ReturnType<typeof analyzeInteractions>,
-  opts?: { gender?: string; xiShen?: string[] },
-): string[] {
-  const notes: string[] = [];
-  const ps = bazi.pillars;
-  const gender = opts?.gender;
-  const xiShen = opts?.xiShen ?? [];
+const WX_MAP: Record<string, string> = {
+  '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土', '己': '土',
+  '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+};
 
-  function shishenToElement(shishen: string, dayGan: string): string {
-    const wx: Record<string, string> = { '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土', '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水' };
-    const dayEl = wx[dayGan] ?? '';
-    const generates: Record<string, string> = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' };
-    const controls: Record<string, string> = { '木': '土', '火': '金', '土': '水', '金': '木', '水': '火' };
-    const generatedBy: Record<string, string> = { '木': '水', '火': '木', '土': '火', '金': '土', '水': '金' };
-    const controlsBy: Record<string, string> = { '木': '金', '火': '水', '土': '木', '金': '火', '水': '土' };
-    if (shishen.includes('比') || shishen.includes('劫')) return dayEl;
-    if (shishen.includes('食') || shishen.includes('伤')) return generates[dayEl] ?? '';
-    if (shishen.includes('正财') || shishen.includes('偏财')) return controls[dayEl] ?? '';
-    if (shishen.includes('正官') || shishen.includes('七杀')) return controlsBy[dayEl] ?? '';
-    if (shishen.includes('正印') || shishen.includes('偏印')) return generatedBy[dayEl] ?? '';
-    return '';
-  }
-
-  const dayGan = ps.日柱.gan;
-  const dayZhi = ps.日柱.zhi;
-  const wxMap: Record<string, string> = { '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土', '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水' };
-  const dayEl = wxMap[dayGan] ?? '';
-
-  switch (dim) {
-    case 'mingge': {
-      const pattern = bazi.pattern || '正格';
-      notes.push(`格局: ${pattern}`);
-      const combos = (interactions as any).combos || [];
-      if (combos.length > 0) notes.push(`特殊组合: ${combos.join('；')}`);
-      break;
-    }
-    case 'career': {
-      const officials = Object.entries(ps).filter(([, p]) => p.shishen.includes('官'));
-      const seals = Object.entries(ps).filter(([, p]) => p.shishen.includes('印'));
-      if (officials.length > 0) notes.push(`官星${officials.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      if (seals.length > 0) notes.push(`印星${seals.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      if (xiShen.length > 0) notes.push(`喜用神${xiShen.join('、')}得力`);
-      const careerInteraction = (interactions as any).summary?.career;
-      if (careerInteraction) notes.push(careerInteraction);
-      break;
-    }
-    case 'wealth': {
-      const cais = Object.entries(ps).filter(([, p]) => p.shishen.includes('财'));
-      if (cais.length > 0) notes.push(`财星${cais.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      const wealthInteraction = (interactions as any).summary?.wealth;
-      if (wealthInteraction) notes.push(wealthInteraction);
-      break;
-    }
-    case 'marriage': {
-      if (gender === 'M') {
-        const cais = Object.entries(ps).filter(([, p]) => p.shishen.includes('财'));
-        if (cais.length > 0) notes.push(`妻星(财): ${cais.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      } else {
-        const officials = Object.entries(ps).filter(([, p]) => p.shishen.includes('官'));
-        if (officials.length > 0) notes.push(`夫星(官): ${officials.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      }
-      const rizhi = ps.日柱;
-      const rizhiCang = rizhi.canggan.map(h => h.tenGod).join('、');
-      notes.push(`日支${rizhi.zhi}藏${rizhiCang}，夫妻宫`);
-      break;
-    }
-    case 'children': {
-      const childrenStars = Object.entries(ps).filter(([, p]) => p.shishen.includes('食') || p.shishen.includes('伤'));
-      if (childrenStars.length > 0) notes.push(`子女星(食伤): ${childrenStars.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      const shiZhu = ps.时柱;
-      notes.push(`时柱${shiZhu.gan}${shiZhu.zhi}为子女宫`);
-      break;
-    }
-    case 'health': {
-      const scoresAny = (interactions as any).scores || {};
-      const dayElScore = scoresAny[dayEl] ?? 0;
-      const weakEls = Object.entries(scoresAny).filter(([e, v]: [string, any]) => e !== dayEl && v >= dayElScore * 1.5);
-      if (weakEls.length > 0) notes.push(`强旺五行: ${weakEls.map(([e]) => e).join('、')}`);
-      else notes.push('五行相对平衡');
-      break;
-    }
-    case 'parents': {
-      const seals = Object.entries(ps).filter(([, p]) => p.shishen.includes('印'));
-      if (seals.length > 0) notes.push(`印星(母): ${seals.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      const nianZhu = ps.年柱;
-      notes.push(`年柱${nianZhu.gan}${nianZhu.zhi}为父母宫`);
-      break;
-    }
-    case 'siblings': {
-      const peers = Object.entries(ps).filter(([, p]) => p.shishen.includes('比') || p.shishen.includes('劫'));
-      if (peers.length > 0) notes.push(`比劫(兄弟姐妹): ${peers.map(([k, p]) => `${k}${p.gan}`).join('、')}`);
-      break;
-    }
-    case 'property': {
-      if (ps.年柱.shishen.includes('印')) notes.push(`年柱${ps.年柱.gan}${ps.年柱.zhi}十神${ps.年柱.shishen}，印星代表房产田宅。`);
-      break;
-    }
-    case 'dayun': {
-      const currentDayun = bazi.dayun.steps.find(s => s.startAge <= (bazi.dayun.startAgeYears + 11) && s.endAge >= (bazi.dayun.startAgeYears + 11));
-      if (currentDayun) notes.push(`当前大运: ${currentDayun.gan}${currentDayun.zhi}(${currentDayun.ganShishen}/${currentDayun.zhiShishen})`);
-      break;
-    }
-  }
-  return notes;
+function elementBar(scores: Record<string, number>): string {
+  const order = ['木', '火', '土', '金', '水'];
+  const clr: Record<string, string> = { '木': '#4CAF50', '火': '#F44336', '土': '#8B4513', '金': '#DAA520', '水': '#2196F3' };
+  const positives = order.map(e => Math.max(0, scores[e] ?? 0));
+  const max = Math.max(...positives, 1);
+  return order.map(e => {
+    const v = scores[e] ?? 0;
+    const absV = Math.abs(v);
+    const w = Math.max(0, Math.round((absV / max) * 20));
+    const bar = v >= 0
+      ? '█'.repeat(w) + '░'.repeat(20 - w)
+      : '░'.repeat(20 - w) + '▓'.repeat(w);
+    return `<span style="color:${clr[e]}">${e} ${bar} ${v.toFixed(1)}</span>`;
+  }).join('  \n');
 }
 
-// ── 八字专业报告 ────────────────────────────────────
+// ── 主线 ────────────────────────────────────────
 
 export async function generateBaziReport(
   bazi: BaziChart,
   birthInfo?: { datetime: string; location: string; gender: string; name?: string; skipAi?: boolean },
   precomputed?: import('./types.js').PrecomputedData,
 ): Promise<string> {
-  const lines: string[] = [];
+  const L: string[] = [];
   const n = now();
   const age = birthInfo ? new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear() : 0;
-
-  lines.push('# 八字命理分析报告');
-  lines.push('');
-  if (birthInfo?.name) lines.push(`**命主:** ${birthInfo.name}`);
-  lines.push(`**生成时间:** ${n}`);
-  if (birthInfo) lines.push(`**出生:** ${birthInfo.datetime} | ${birthInfo.gender === 'M' ? '男' : '女'} | **${age}岁**`);
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  const wxColor: Record<string, string> = {
-    '甲': '#4CAF50', '乙': '#4CAF50', '寅': '#4CAF50', '卯': '#4CAF50',
-    '丙': '#F44336', '丁': '#F44336', '巳': '#F44336', '午': '#F44336',
-    '戊': '#8B4513', '己': '#8B4513', '辰': '#8B4513', '戌': '#8B4513', '丑': '#8B4513', '未': '#8B4513',
-    '庚': '#DAA520', '辛': '#DAA520', '申': '#DAA520', '酉': '#DAA520',
-    '壬': '#2196F3', '癸': '#2196F3', '亥': '#2196F3', '子': '#2196F3',
-  };
-  function colored(c: string) { return `<span style="color:${wxColor[c] ?? '#000'}">${c}</span>`; }
+  const gender = birthInfo?.gender ?? 'M';
+  const genderLabel = gender === 'M' ? '男' : '女';
+  const dayGan = bazi.pillars.日柱.gan;
+  const dayEl = WX_MAP[dayGan] ?? '';
   const pillarOrder = ['时柱', '日柱', '月柱', '年柱'] as const;
 
-  // ═══ 一、排盘总览 ═══
-  lines.push('## 排盘总览');
-  lines.push('');
-  lines.push(`**${bazi.pattern || ''}** | 日主: ${colored(bazi.pillars.日柱.gan)}${colored(bazi.pillars.日柱.zhi)} | 起运${bazi.dayun.startAgeYears}岁${bazi.dayun.direction === 'forward' ? '顺行' : '逆行'}`);
-  lines.push('');
-  lines.push('| | ' + pillarOrder.map(k => k.replace('柱', '')).join(' | ') + ' |');
-  lines.push('|---|' + pillarOrder.map(() => '---|').join('') + '');
-  lines.push('| 天干十神 | ' + pillarOrder.map(k => bazi.pillars[k].shishen).join(' | ') + ' |');
-  lines.push('| 天干 | ' + pillarOrder.map(k => colored(bazi.pillars[k].gan)).join(' | ') + ' |');
-  lines.push('| 地支 | ' + pillarOrder.map(k => colored(bazi.pillars[k].zhi)).join(' | ') + ' |');
-  lines.push('| 地支十神 | ' + pillarOrder.map(k => bazi.pillars[k].canggan[0]?.tenGod ?? '—').join(' | ') + ' |');
+  // ── 预计算数据 ──
+  const yongShenResult = precomputed?.yongShenResult
+    ?? await determineYongShen(bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, dayGan);
+  const scoreData = (precomputed as any)?.score;
+  const specialtyV2 = (precomputed as any)?.specialty;
+  const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
+  const currentDayun = dayunJudgments.find(d => d.step.startAge <= age && d.step.endAge >= age);
+  const nextDayun = dayunJudgments.find(d => d.step.startAge > age);
+
+  // ── 封面 ──
+  L.push('');
+  L.push('┌─────────────────────────────────────────────────────┐');
+  L.push('│                                                     │');
+  L.push('│              八 字 命 理 分 析 报 告                  │');
+  L.push('│           Bazi · Four Pillars of Destiny             │');
+  L.push('│                                                     │');
+  L.push('├─────────────────────────────────────────────────────┤');
+  if (birthInfo?.name) L.push(`│  命主: ${birthInfo.name.padEnd(40)}│`);
+  L.push(`│  性别: ${genderLabel}      年龄: ${String(age).padEnd(3)}岁      日主: ${dayGan}${dayEl.padEnd(4)}│`);
+  L.push(`│  出生: ${(birthInfo?.datetime ?? '').padEnd(40)}│`);
+  L.push(`│  八字: ${pillarOrder.map(k => bazi.pillars[k].gan + bazi.pillars[k].zhi).join(' ').padEnd(40)}│`);
+  L.push(`│  格局: ${(bazi.pattern || '正格').padEnd(40)}│`);
+  L.push(`│  生成: ${n.padEnd(40)}│`);
+  L.push('└─────────────────────────────────────────────────────┘');
+  L.push('');
+
+  // ═══════════════════════════════════════════════════
+  // 第一章  命局总览
+  // ═══════════════════════════════════════════════════
+  L.push('## 第一章  命局总览');
+  L.push('');
+
+  // 四柱表
+  L.push('| | 时 | 日 | 月 | 年 |');
+  L.push('|---|---:|---:|---:|---:|');
+  L.push('| 天干 | ' + pillarOrder.map(k => colored(bazi.pillars[k].gan)).join(' | ') + ' |');
+  L.push('| 地支 | ' + pillarOrder.map(k => colored(bazi.pillars[k].zhi)).join(' | ') + ' |');
+  L.push('| 十神 | ' + pillarOrder.map(k => bazi.pillars[k].shishen).join(' | ') + ' |');
+  L.push('| 主气 | ' + pillarOrder.map(k => {
+    const h = bazi.pillars[k].canggan[0];
+    return h ? `${colored(h.stem)}(${h.tenGod})` : '—';
+  }).join(' | ') + ' |');
   const maxCang = Math.max(...pillarOrder.map(k => bazi.pillars[k].canggan.length));
-  for (let i = 0; i < maxCang; i++) {
-    lines.push('| ' + (['主气', '中气', '余气'][i] || '藏干') + ' | ' + pillarOrder.map(k => {
+  for (let i = 1; i < maxCang; i++) {
+    L.push('| ' + (['中气', '余气'][i - 1] || '藏干') + ' | ' + pillarOrder.map(k => {
       const h = bazi.pillars[k].canggan[i];
       return h ? `${colored(h.stem)}(${h.tenGod})` : '—';
     }).join(' | ') + ' |');
   }
-  lines.push('');
+  L.push('');
 
-  // ═══ 二、五行旺衰分析 ═══
-  const scoreData = (precomputed as any)?.score;
-  lines.push('## 五行旺衰');
-  lines.push('');
-  const wxMap: Record<string,string> = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
-  const dayEl2 = wxMap[bazi.pillars.日柱.gan] ?? '';
+  // 五行力量条
   if (scoreData) {
-    lines.push(`| 项目 | 数值 |`);
-    lines.push(`|------|------|`);
-    lines.push(`| 日主${bazi.pillars.日柱.gan}(${dayEl2})得分 | ${scoreData.dayScore.toFixed(1)} 分 |`);
-    lines.push(`| 自党（日主+印扶） | ${scoreData.ziDang.toFixed(1)} 分 |`);
-    lines.push(`| 异党（官杀+食伤+财） | ${scoreData.yiDang.toFixed(1)} 分 |`);
-    lines.push(`| 判定 | **${scoreData.dayStrength}** |`);
-    const monthZhi3 = bazi.pillars.月柱.zhi;
-    const dayCl = CLIMATE_COEFF[monthZhi3]?.[dayEl2] ?? 1.0;
-    lines.push(`| 月令 | ${monthZhi3}月，${dayEl2}气候系数 ${dayCl} |`);
-    lines.push('');
+    L.push('### 五行力量');
+    L.push('');
+    L.push(elementBar(scoreData.elementScores));
+    L.push('');
+    L.push(`| 自党(日主+印) | 异党(官杀+食伤+财) | 日主得分 | 判定 |`);
+    L.push(`|:---:|:---:|:---:|:---:|`);
+    L.push(`| ${(scoreData.ziDang as number).toFixed(1)} | ${(scoreData.yiDang as number).toFixed(1)} | ${(scoreData.dayScore as number).toFixed(1)} | **${scoreData.dayStrength}** |`);
+    L.push('');
   }
-  lines.push('');
 
-  // 用神分析（优先使用外部传入的预计算结果）
-  const yongShenResult = precomputed?.yongShenResult
-    ?? await determineYongShen(
-      bazi.pillars as any, bazi.pattern || '', bazi.pillars.月柱.zhi, bazi.pillars.日柱.gan,
-    );
+  // ═══════════════════════════════════════════════════
+  // 第二章  日主分析
+  // ═══════════════════════════════════════════════════
+  L.push('## 第二章  日主分析');
+  L.push('');
 
-  lines.push('## 用神喜忌');
-  lines.push('');
-  lines.push('| 分析维度 | 类型 | 用神 | 诊断 |');
-  lines.push('|----------|------|------|------|');
+  const dayElDescriptions: Record<string, string> = {
+    '木': '甲木为参天大树，乙木为花草藤萝。木主仁，有生长向上之力，性格正直温和，但也容易固执。',
+    '火': '丙火为太阳之火，丁火为灯烛之火。火主礼，热情奔放，行动力强，但也容易急躁冲动。',
+    '土': '戊土为城墙之土，己土为田园之土。土主信，稳重踏实，包容承载，但也容易保守迟缓。',
+    '金': '庚金为刀剑之金，辛金为珠玉之金。金主义，刚毅果断，重原则守纪律，但也容易刻板冷漠。',
+    '水': '壬水为江河之水，癸水为雨露之水。水主智，聪明变通，适应力强，但也容易善变不定。',
+  };
+  const dayDesc = dayElDescriptions[dayEl] ?? '';
+
+  L.push(`你的日主是 **${colored(dayGan)}${dayEl}**。${dayDesc}`);
+  L.push('');
+
+  if (scoreData) {
+    const ds = scoreData.dayStrength as string;
+    const isStrong = ds.includes('强');
+    const wxWhy: Record<string, string> = {
+      '木': isStrong ? '木旺需金来修剪、火来泄秀' : '木弱需水来滋养、木来扶持',
+      '火': isStrong ? '火旺需水来调候、土来泄力' : '火弱需木来生火、火来帮助',
+      '土': isStrong ? '土旺需木来疏通、金来泄气' : '土弱需火来生土、土来帮助',
+      '金': isStrong ? '金旺需火来锻炼、水来泄秀' : '金弱需土来生金、金来帮助',
+      '水': isStrong ? '水旺需土来筑堤、木来泄流' : '水弱需金来生水、水来帮助',
+    };
+
+    L.push(`**强弱判定：${ds}**`);
+    L.push('');
+    L.push(`全局自党 ${(scoreData.ziDang as number).toFixed(1)} 分，异党 ${(scoreData.yiDang as number).toFixed(1)} 分。`);
+    L.push(`日主${dayEl}在全局中力量${isStrong ? '充足' : '偏弱'}。${wxWhy[dayEl] ?? ''}`);
+    L.push('');
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 第三章  用神喜忌
+  // ═══════════════════════════════════════════════════
+  L.push('## 第三章  用神喜忌');
+  L.push('');
+
+  // 六书合参
+  L.push('### 六书合参');
+  L.push('');
+  L.push('| 分析维度 | 类型 | 用神 | 诊断 |');
+  L.push('|----------|------|------|------|');
   const typeNames: Record<string, string> = { 格局用神: '格局', 平衡用神: '扶抑', 调候用神: '调候', 病药用神: '病药', 神煞: '神煞', 奇格: '奇格' };
   for (const e of yongShenResult.engines ?? []) {
-    lines.push(`| ${e.name} | ${typeNames[e.yongShenType ?? ''] ?? ''} | ${e.yongShen ?? '—'} | ${e.diagnostics.join('；')} |`);
+    L.push(`| ${e.name} | ${typeNames[e.yongShenType ?? ''] ?? ''} | ${e.yongShen ?? '—'} | ${e.diagnostics.join('；')} |`);
   }
-  lines.push('');
+  L.push('');
 
-  const strengthLabel = yongShenResult.fuyi.dayStrength.includes('弱') ? '身弱，喜生扶' : '身强，喜克泄';
-  lines.push(`**结论**: ${bazi.pattern || '正格'}，${yongShenResult.fuyi.dayStrength}（${strengthLabel}）`);
-  if (yongShenResult.final.xiShen.length > 0) lines.push(`**喜用神: ${yongShenResult.final.xiShen.join('、')}**`);
-  if (yongShenResult.final.jiShen.length > 0) lines.push(`**忌神: ${yongShenResult.final.jiShen.join('、')}**`);
-  lines.push('');
+  // 白话总结
+  const yEl = yongShenResult.final.yongShen;
+  const xiEls = yongShenResult.final.xiShen;
+  const jiEls = yongShenResult.final.jiShen;
 
-  lines.push('');
+  // 去重用神+喜神
+  const yongXiUniq = [...new Set([yEl, ...xiEls])];
 
-  // ═══ 专项分析 ═══
-  const specialtyV2 = (precomputed as any)?.specialty;
-  lines.push('## 命理专项分析');
-  lines.push('');
+  L.push('### 一句话总结');
+  L.push('');
+  L.push(`**对你有利的（喜用神）：${yongXiUniq.join('、')}**`);
+  L.push('');
+  for (const e of yongXiUniq) {
+    const genRel: Record<string, string> = {
+      '木': '木能生火、克土，木代表生长和创造力',
+      '火': '火能生土、克金，火代表热情和行动力',
+      '土': '土能生金、克水，土代表稳定和承载力',
+      '金': '金能生水、克木，金代表规则和决断力',
+      '水': '水能生木、克火，水代表智慧和变通力',
+    };
+    if (genRel[e]) L.push(`- **${e}** — ${genRel[e]}。${e}属性的人/事/物对你有正面帮助。`);
+  }
+  L.push('');
+  L.push(`**对你不利的（忌神）：${jiEls.join('、')}**`);
+  L.push('');
+  for (const e of jiEls) {
+    L.push(`- **${e}** — 遇到${e}属性的人/事/物时需多加注意，不宜过度投入。`);
+  }
+  L.push('');
 
-  const chapterDefs: Record<string, { order: number; title: string; icon: string; dims: string[] }> = {
-    personality: { order: 1, title: '性格特质', icon: '🎯', dims: ['性格'] },
-    careerWealth: { order: 2, title: '事业财运', icon: '💼', dims: ['事业', '财运'] },
-    marriage: { order: 3, title: '婚姻感情', icon: '💕', dims: ['婚姻'] },
-    health: { order: 4, title: '健康养生', icon: '⚕️', dims: ['健康'] },
-    family: { order: 5, title: '六亲缘份', icon: '🏠', dims: ['子女', '父母', '人际', '兄弟', '田宅', '晚年'] },
+  // ═══════════════════════════════════════════════════
+  // 第四章  人生专题
+  // ═══════════════════════════════════════════════════
+  L.push('## 第四章  人生专题');
+  L.push('');
+
+  const chapterDefs: Record<string, { order: number; title: string; dims: string[] }> = {
+    personality: { order: 1, title: '🎯 性格特质', dims: ['性格'] },
+    careerWealth: { order: 2, title: '💼 事业财运', dims: ['事业', '财运'] },
+    marriage: { order: 3, title: '💕 婚姻感情', dims: ['婚姻'] },
+    health: { order: 4, title: '⚕️ 健康养生', dims: ['健康'] },
+    family: { order: 5, title: '🏠 六亲缘份', dims: ['子女', '父母', '人际', '兄弟', '田宅', '晚年'] },
   };
 
   if (specialtyV2?.dimensions) {
-    // 按 chapter 重新组织维度
     const dimMap = new Map<string, any[]>(
       specialtyV2.dimensions.map((d: any) => [d.dimension as string, d.items as any[]])
     );
 
-    const chapters = Object.entries(chapterDefs)
-      .sort((a, b) => a[1].order - b[1].order);
+    const chapters = Object.entries(chapterDefs).sort((a, b) => a[1].order - b[1].order);
 
     for (const [, chapter] of chapters) {
-      // 收集本章有内容的维度
       const chapterItems: Array<{ dim: string; item: any }> = [];
       for (const dimName of chapter.dims) {
-        const items = dimMap.get(dimName) || [];
-        for (const item of items) {
+        for (const item of (dimMap.get(dimName) || [])) {
           chapterItems.push({ dim: dimName, item });
         }
       }
       if (chapterItems.length === 0) continue;
 
-      lines.push(`### ${chapter.icon} ${chapter.title}`);
-      lines.push('');
+      L.push(`### ${chapter.title}`);
+      L.push('');
 
-      for (const { dim, item } of chapterItems) {
-        // 每个 item 作为一个段落块
-        // 用 layer1 的前20字做小标题
-        const title = item.layer1.length > 40
-          ? item.layer1.slice(0, 40).replace(/[，,。；;]$/, '') + '…'
-          : item.layer1;
+      for (const { item } of chapterItems) {
+        // 标题 = L1
+        L.push(`**${item.layer1}**`);
+        L.push('');
 
-        lines.push(`**${item.layer1}**`);
-        lines.push('');
-        lines.push(`<span style="color:#666;">▸ 对你的影响</span>`);
-        lines.push(item.layer2);
-        lines.push('');
-        lines.push(`<span style="color:#1976D2;">▸ 趋避建议</span>`);
-        lines.push(item.layer3);
-        lines.push('');
-        lines.push('---');
-        lines.push('');
+        // L2: 对你的影响
+        L.push(`<span style="color:#666;">▸ 对你的影响</span>`);
+        L.push(item.layer2);
+        L.push('');
+
+        // L3: 趋避建议
+        L.push(`<span style="color:#1976D2;">▸ 趋避建议</span>`);
+        L.push(item.layer3);
+        L.push('');
+
+        // 古籍引用
+        if (item.citation) {
+          L.push(`> 📖 ${item.citation}`);
+          L.push('');
+        }
+
+        L.push('---');
+        L.push('');
       }
     }
 
     // 命格等级
     const gradeEmoji: Record<string, string> = { 'A': '🏆', 'B': '⭐', 'C': '📊', 'D': '🔍' };
-    lines.push(`**${gradeEmoji[specialtyV2.rating.grade] || ''} 命格等级: ${specialtyV2.rating.grade}** — ${specialtyV2.rating.summary}`);
-    lines.push('');
+    L.push(`**${gradeEmoji[specialtyV2.rating.grade] || ''} 综合评级: ${specialtyV2.rating.grade}** — ${specialtyV2.rating.summary}`);
+    L.push('');
   }
 
-    // ═══ 十、大运详析
-  const dayunJudgments = judgeDayun(bazi.dayun.steps, bazi.pillars, yongShenResult.final.xiShen, yongShenResult.final.jiShen, yongShenResult.final.yongShen);
-  lines.push('## 大运详析');
-  lines.push('');
-  lines.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
-  lines.push('|------|------|------------|------------|-----------|');
+  // ═══════════════════════════════════════════════════
+  // 第五章  大运走势
+  // ═══════════════════════════════════════════════════
+  L.push('## 第五章  大运走势');
+  L.push('');
+  L.push(`起运年龄: **${bazi.dayun.startAgeYears}岁**，${bazi.dayun.direction === 'forward' ? '顺行' : '逆行'}`);
+  L.push('');
+
+  // 每运一个卡片
   for (const d of dayunJudgments) {
-    lines.push(`| ${d.step.startAge}-${d.step.endAge} | ${d.step.gan}${d.step.zhi} | ${d.ganJudgment || ''} | ${d.zhiJudgment || ''} | ${d.interactions.join('；') || ''} |`);
-  }
-  lines.push('');
+    const isCurrent = d === currentDayun;
+    const isPast = d.step.endAge < age;
+    const prefix = isCurrent ? '▶️ ' : isPast ? '✅ ' : '🔮 ';
+    const tag = isCurrent ? ' **⬅ 你在这里**' : '';
 
-  const currentDayun = dayunJudgments.find(d => d.step.startAge <= age && d.step.endAge >= age);
+    // 过去的大运折叠，当前和未来的展开
+    if (isPast) {
+      L.push(`<details>`);
+      L.push(`<summary>${prefix}${d.step.startAge}-${d.step.endAge}岁 ${d.step.gan}${d.step.zhi} — ${d.ganJudgment} / ${d.zhiJudgment}</summary>`);
+    } else {
+      L.push(`#### ${prefix}${d.step.startAge}-${d.step.endAge}岁  ${colored(d.step.gan)}${colored(d.step.zhi)}${tag}`);
+      L.push('');
+    }
+
+    if (!isPast) {
+      // 详细卡片
+      const ganLabel = d.ganJudgment.includes('用神') ? '✅ 用神' : d.ganJudgment.includes('喜') ? '👍 喜神' : '⚠️ 忌神';
+      const zhiLabel = d.zhiJudgment.includes('用神') ? '✅ 用神' : d.zhiJudgment.includes('喜') ? '👍 喜神' : '⚠️ 忌神';
+
+      L.push('| 项目 | 内容 |');
+      L.push('|------|------|');
+      L.push(`| 天干(前5年) | ${colored(d.step.gan)} ${d.step.ganShishen} — ${ganLabel} ${d.ganJudgment} |`);
+      L.push(`| 地支(后5年) | ${colored(d.step.zhi)} ${d.step.zhiShishen} — ${zhiLabel} ${d.zhiJudgment} |`);
+      if (d.interactions.length > 0) {
+        L.push(`| 与命局互动 | ${d.interactions.join('；')} |`);
+      }
+      L.push('');
+
+      // 关键年份提示
+      const stepStartYear = new Date(birthInfo?.datetime ?? '2000-01-01').getFullYear() + d.step.startAge;
+      L.push(`**这十年中值得关注的年份**: ${stepStartYear + 1}年、${stepStartYear + 4}年、${stepStartYear + 7}年`);
+      L.push('');
+    }
+
+    if (isPast) {
+      L.push('</details>');
+      L.push('');
+    }
+  }
+
+  // 简表（折叠）
+  L.push('<details>');
+  L.push('<summary>📋 大运速查表</summary>');
+  L.push('');
+  L.push('| 年龄 | 干支 | 天干(前5年) | 地支(后5年) | 与命局互动 |');
+  L.push('|------|------|------------|------------|-----------|');
+  for (const d of dayunJudgments) {
+    L.push(`| ${d.step.startAge}-${d.step.endAge} | ${d.step.gan}${d.step.zhi} | ${d.ganJudgment || ''} | ${d.zhiJudgment || ''} | ${d.interactions.join('；') || '—'} |`);
+  }
+  L.push('');
+  L.push('</details>');
+  L.push('');
+
+  // ═══════════════════════════════════════════════════
+  // 第六章  当前运势
+  // ═══════════════════════════════════════════════════
+  L.push('## 第六章  当前运势');
+  L.push('');
+
+  const currentYear = new Date().getFullYear();
+  const tianGan = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  const diZhi = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const thisYearGan = tianGan[(currentYear - 4) % 10];
+  const thisYearZhi = diZhi[(currentYear - 4) % 12];
+  const nextYearGan = tianGan[(currentYear - 3) % 10];
+  const nextYearZhi = diZhi[(currentYear - 3) % 12];
+
   if (currentDayun) {
-    lines.push(`**当前大运**: ${currentDayun.step.startAge}-${currentDayun.step.endAge}岁 ${currentDayun.step.gan}${currentDayun.step.zhi}（${currentDayun.ganJudgment}）`);
-    lines.push('');
+    L.push('### 当前大运');
+    L.push('');
+    L.push(`你正处于 **${currentDayun.step.startAge}-${currentDayun.step.endAge}岁 ${colored(currentDayun.step.gan)}${colored(currentDayun.step.zhi)}** 大运中。`);
+    L.push('');
+    L.push(`- **前5年（${currentDayun.step.startAge}-${currentDayun.step.startAge + 4}岁）**: ${currentDayun.step.gan}${currentDayun.step.ganShishen}主事 — ${currentDayun.ganJudgment}`);
+    L.push(`- **后5年（${currentDayun.step.startAge + 5}-${currentDayun.step.endAge}岁）**: ${currentDayun.step.zhi}${currentDayun.step.zhiShishen}主事 — ${currentDayun.zhiJudgment}`);
+    if (currentDayun.interactions.length > 0) {
+      L.push(`- **与命局互动**: ${currentDayun.interactions.join('；')}`);
+    }
+    L.push('');
   }
 
+  L.push('### 流年分析');
+  L.push('');
+  L.push(`#### ${currentYear}年 — ${thisYearGan}${thisYearZhi}年`);
+  L.push('');
 
+  // 简单流年判断
+  const thisYearEl = WX_MAP[thisYearGan] ?? '';
+  const isLiuNianYong = yongShenResult.final.xiShen.includes(thisYearEl) || yongShenResult.final.yongShen === thisYearEl;
+  const isLiuNianJi = yongShenResult.final.jiShen.includes(thisYearEl);
+  const liunianLabel = isLiuNianYong ? '✅ 用神年' : isLiuNianJi ? '⚠️ 忌神年' : '➖ 平年';
 
-  // ═══ 十一、趋吉避凶 ═══
-  lines.push('## 趋吉避凶');
-  lines.push('');
-  const directionMap: Record<string,string> = {'木':'东方','火':'南方','土':'中央/本地','金':'西方','水':'北方'};
-  const colorMap: Record<string,string> = {'木':'绿色/青色','火':'红色/紫色','土':'黄色/棕色','金':'白色/金色','水':'黑色/蓝色'};
-  const yEl = yongShenResult.final.yongShen;
-  if (yEl) {
-    lines.push(`- **有利行业**: ${yEl}属性行业（见事业财运章节）`);
-    lines.push(`- **有利方位**: ${directionMap[yEl] || yEl}`);
-    lines.push(`- **有利颜色**: ${colorMap[yEl] || yEl}`);
-    lines.push(`- **贵人属相**: ${yEl === '木' ? '虎/兔' : yEl === '火' ? '蛇/马' : yEl === '土' ? '龙/狗/牛/羊' : yEl === '金' ? '猴/鸡' : '鼠/猪'}`);
-    lines.push('');
+  L.push(`流年干支 ${colored(thisYearGan)}${colored(thisYearZhi)}，天干${thisYearEl}${liunianLabel}。`);
+  if (currentDayun) {
+    const dayunGanEl = WX_MAP[currentDayun.step.gan] ?? '';
+    const dayunZhiEl = WX_MAP[currentDayun.step.zhi] ?? '';
+    L.push(`大运${colored(currentDayun.step.gan)}${colored(currentDayun.step.zhi)}与流年互动，需结合大运走势综合判断。`);
+  }
+  L.push('');
+
+  L.push(`#### ${currentYear + 1}年 — ${nextYearGan}${nextYearZhi}年（预告）`);
+  const nextYearEl = WX_MAP[nextYearGan] ?? '';
+  const isNextYong = yongShenResult.final.xiShen.includes(nextYearEl) || yongShenResult.final.yongShen === nextYearEl;
+  L.push(`明年天干${nextYearEl}，${isNextYong ? '用神到位，值得期待' : '需要提前规划，做好准备'}。`);
+  L.push('');
+
+  if (nextDayun) {
+    L.push('### 下一大运预告');
+    L.push('');
+    L.push(`**${nextDayun.step.startAge}-${nextDayun.step.endAge}岁 ${colored(nextDayun.step.gan)}${colored(nextDayun.step.zhi)}** — ${nextDayun.ganJudgment} / ${nextDayun.zhiJudgment}`);
+    L.push('');
   }
 
-  // ═══ 附录：计分过程 ═══
-  const scores = yongShenResult.fuyi.elementScores;
-  const scoreEntries = (Object.entries(scores) as [string, number][]).sort((a, b) => b[1] - a[1]);
-  const clrMap: Record<string, string> = { '木': '#4CAF50', '火': '#F44336', '土': '#8B4513', '金': '#DAA520', '水': '#2196F3' };
-  lines.push('<details>');
-  lines.push('<summary>附录：五行计分详情</summary>');
-  lines.push('');
-  const scoreLine = scoreEntries.map(([el, v]) => `<span style="color:${clrMap[el] ?? '#000'}">${el}${v.toFixed(1)}</span>`).join('  ');
-  lines.push(`**五行力量**: ${scoreLine} | 日主${yongShenResult.fuyi.dayScore.toFixed(1)}分`);
-  lines.push('');
-  for (const d of yongShenResult.fuyi.details) {
-    lines.push(`- ${d}`);
+  // ═══════════════════════════════════════════════════
+  // 第七章  趋吉避凶
+  // ═══════════════════════════════════════════════════
+  L.push('## 第七章  趋吉避凶');
+  L.push('');
+
+  const directionMap: Record<string, string> = { '木': '东方', '火': '南方', '土': '中央/本地', '金': '西方', '水': '北方' };
+  const colorMap: Record<string, string> = { '木': '绿色/青色', '火': '红色/紫色', '土': '黄色/棕色', '金': '白色/金色', '水': '黑色/蓝色' };
+  const industryMap: Record<string, string> = {
+    '木': '教育/出版/医疗/环保/农业', '火': '能源/餐饮/互联网/传媒/娱乐',
+    '土': '房地产/建筑/金融/农业/矿产', '金': '法律/军警/机械/金融/汽车',
+    '水': '物流/贸易/旅游/咨询/渔业',
+  };
+  const animalMap: Record<string, string> = {
+    '木': '虎/兔', '火': '蛇/马', '土': '龙/狗/牛/羊', '金': '猴/鸡', '水': '鼠/猪',
+  };
+
+  const yEl1 = yongShenResult.final.yongShen;
+  const jiEl1 = jiEls[0] || '';
+  const yongXiDisplay = yongXiUniq.join('、');
+
+  L.push('| 维度 | ✅ 有利 | ⚠️ 注意 |');
+  L.push('|------|---------|---------|');
+  L.push(`| 五行 | ${yongXiDisplay} | ${jiEls.join('、') || '—'} |`);
+  L.push(`| 行业 | ${industryMap[yEl1] || yEl1 + '属性行业'} | ${industryMap[jiEl1] || (jiEl1 ? jiEl1 + '属性行业' : '—')} |`);
+  L.push(`| 方位 | ${directionMap[yEl1] || yEl1} | ${jiEls.map((e: string) => directionMap[e] || e).join('、') || '—'} |`);
+  L.push(`| 颜色 | ${colorMap[yEl1] || yEl1} | ${jiEls.map((e: string) => colorMap[e] || e).join('、') || '—'} |`);
+  L.push(`| 贵人 | 属${animalMap[yEl1] || yEl1} | — |`);
+  L.push(`| 季节 | ${yEl1 === '木' ? '春' : yEl1 === '火' ? '夏' : yEl1 === '金' ? '秋' : yEl1 === '水' ? '冬' : '四季'}季 | — |`);
+  L.push('');
+
+  // ═══════════════════════════════════════════════════
+  // 附录
+  // ═══════════════════════════════════════════════════
+  L.push('## 附录');
+  L.push('');
+
+  // 计分详情
+  L.push('<details>');
+  L.push('<summary>📊 五行计分详情</summary>');
+  L.push('');
+  if (scoreData) {
+    const scores = (yongShenResult.fuyi as any).elementScores || scoreData.elementScores;
+    const clrMap: Record<string, string> = { '木': '#4CAF50', '火': '#F44336', '土': '#8B4513', '金': '#DAA520', '水': '#2196F3' };
+    const scoreEntries = (Object.entries(scores) as [string, number][]).sort((a, b) => b[1] - a[1]);
+    const scoreLine = scoreEntries.map(([el, v]) => `<span style="color:${clrMap[el] ?? '#000'}">${el}${v.toFixed(1)}</span>`).join('  ');
+    L.push(`**五行力量**: ${scoreLine} | 日主${(yongShenResult.fuyi as any).dayScore?.toFixed(1) ?? scoreData.dayScore?.toFixed(1) ?? '?'}分`);
+    L.push('');
+    for (const d of (yongShenResult.fuyi.details || [])) {
+      L.push(`- ${d}`);
+    }
   }
-  lines.push('</details>');
-  lines.push('');
+  L.push('');
+  L.push('</details>');
+  L.push('');
 
   // 古籍参考
   const classicalRefs = (yongShenResult.engines ?? [])
     .flatMap((e: any) => (e.diagnostics || []).map((d: string) => ({ engine: e.name, text: d })))
     .filter((r: any) => /穷通宝鉴|滴天髓|子平真诠|神峰通考|渊海子平|三命通会/.test(r.text));
   if (classicalRefs.length > 0) {
-    lines.push('## 古籍参考');
-    lines.push('');
-    const sources = ['穷通宝鉴','滴天髓','子平真诠','神峰通考','渊海子平','三命通会'];
+    L.push('<details>');
+    L.push('<summary>📖 古籍参考</summary>');
+    L.push('');
+    const sources = ['穷通宝鉴', '滴天髓', '子平真诠', '神峰通考', '渊海子平', '三命通会'];
     for (const src of sources) {
       const refs = classicalRefs.filter((r: any) => r.text.includes(src));
       if (refs.length === 0) continue;
-      lines.push(`**${src}**`);
-      for (const r of refs) lines.push(`- ${r.text}`);
-      lines.push('');
+      L.push(`**${src}**`);
+      for (const r of refs) L.push(`- ${r.text}`);
+      L.push('');
     }
+    L.push('</details>');
+    L.push('');
   }
 
-  // AI 分析章节（--ai 启用时，优先使用预计算结果）
+  // AI 分析（--ai 启用时）
   if (!birthInfo?.skipAi) {
     const aiData = (precomputed as any)?.aiResult;
     if (aiData?.yuanju) {
+      L.push('<details>');
+      L.push('<summary>🤖 AI 深度解读（实验性）</summary>');
+      L.push('');
       const clean = (s: string) => s.replace(/^###[^\n]*\n?/gm, '').trim();
-      lines.push('### 原局分析'); lines.push(''); lines.push(clean(aiData.yuanju)); lines.push('');
-      if (aiData.dayun) { lines.push('### 大运解读'); lines.push(''); lines.push(clean(aiData.dayun)); lines.push(''); }
-      if (aiData.liunian) { lines.push('### 流年解读'); lines.push(''); lines.push(clean(aiData.liunian)); lines.push(''); }
+      L.push(clean(aiData.yuanju)); L.push('');
+      if (aiData.dayun) { L.push('**大运解读**'); L.push(''); L.push(clean(aiData.dayun)); L.push(''); }
+      if (aiData.liunian) { L.push('**流年解读**'); L.push(''); L.push(clean(aiData.liunian)); L.push(''); }
+      L.push('</details>');
+      L.push('');
     }
   }
 
-  lines.push('---');
-  lines.push(`*${n}*`);
-  return lines.join('\n');
+  L.push('---');
+  L.push(`*报告由 Bazi-Destiny 命理分析系统生成 · ${n}*`);
+  L.push('');
+  L.push('> ⚠️ 免责声明：本报告仅供学习参考，不构成任何决策建议。命理分析是概率性工具，人生选择仍需结合实际情况理性判断。');
+  L.push('');
+
+  return L.join('\n');
 }
