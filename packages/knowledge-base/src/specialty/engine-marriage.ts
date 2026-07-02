@@ -34,10 +34,20 @@ export function analyzeMarriage(ctx: SharedContext): AnalysisItem[] {
     if (chongItem) items.push(chongItem);
   }
 
-  // 官杀混杂
-  if (ctx.mixedOfficials) {
+  // 配偶星混杂: 女命官杀混杂→感情复杂; 男命财星混杂(正财+偏财)→感情复杂
+  // 注: ctx.mixedOfficials 只对女命有意义（官杀=夫星）
+  // 男命需判断正偏财是否混杂
+  if (ctx.gender === 'F' && ctx.mixedOfficials) {
     const mixedItem = lookupBaseTemplate(DIM, 'mixedOfficials', CDIR, '参考');
     if (mixedItem) items.push(mixedItem);
+  }
+  if (ctx.gender === 'M') {
+    // 男命: 判断正财+偏财是否同时存在（财星混杂）
+    const hasMixedWealth = ctx.starCount.wealth >= 2;
+    if (hasMixedWealth) {
+      const mixedItem = lookupBaseTemplate(DIM, 'mixedWealth', CDIR, '参考');
+      if (mixedItem) items.push(mixedItem);
+    }
   }
 
   return items;
