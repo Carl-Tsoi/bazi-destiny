@@ -22,7 +22,7 @@ L4: analyzeChart() → AnalysisResult (用神+喜神+忌神+六书引擎)
 L5: analyzeAllDimensions() → SpecialtyResultV2 (11维专项分析)
   +  generateAiAnalyses() → AI文本 (原局/大运/流年)
   ↓
-L6: generateBaziReport() → Markdown报告
+L6: generateBaziReport() → Markdown报告 (8章专业格式)
 ```
 
 ## 目录结构
@@ -52,27 +52,28 @@ packages/
         evaluator.ts           — ★ 统一十神评估器 (所有判断逻辑的唯一入口)
         template-lookup.ts     — ★ 统一模板查找 (优先级链+fallback)
         context.ts             — buildContext() 数据提取 + SharedContext 类型
-        content-loader.ts      — loadContent/loadBase 纯加载函数
+        content-loader.ts      — loadContent/loadBase 纯加载函数，读本地 content/
       engine-personality.ts    — 性格 (1/11)
       engine-career.ts         — 事业 (2/11)
       engine-wealth.ts         — 财运 (3/11)
-      engine-marriage.ts       — 婚姻 (4/11)
+      engine-marriage.ts       — 婚姻 (4/11，含性别区分)
       engine-health.ts         — 健康 (5/11)
-      engine-children.ts       — 子女 (6/11)
-      engine-parents.ts        — 父母 (7/11)
+      engine-children.ts       — 子女 (6/11，含性别区分)
+      engine-parents.ts        — 父母 (7/11，偏财=父)
       engine-benefactors.ts    — 人际/贵人 (8/11)
       engine-siblings.ts       — 兄弟 (9/11)
       engine-property.ts       — 田宅 (10/11)
-      engine-later-life.ts     — 晚年 (11/11)
+      engine-later-life.ts     — 晚年 (11/11，含性别区分)
       engine-education.ts      — 学业 (旧版，未被新版编排器调用)
       index.ts                 — analyzeAllDimensions() 统一入口 + computeRating()
       types.ts                 — AnalysisItem 类型 + 旧版兼容类型
       content/                 — 11维分析模板 JSON (yong.json/ji.json/base.json)
+                                key统一英文snake_case，存于src/specialty/content/
     rules/                 — 知识规则
       pattern.ts / rules.ts / rules-lookup.ts / ziwei-rules.ts / bazi-interactions.ts
   cli/                   — L6: CLI
     src/index.ts               — 编排L2→L3→L4→L5→L6
-    src/detailed.ts            — generateBaziReport() 报告生成器
+    src/detailed.ts            — generateBaziReport() 8章专业报告
     src/report-scoring.ts      — generateScoringReport() 计分报告
     src/types.ts               — PrecomputedData 层间传递类型
   reports/               — L5: AI报表
@@ -81,7 +82,60 @@ packages/
     content/ai-prompts.json    — AI提示词模板
 ```
 
-## L5a 架构详解（2026-07-02 全部重写）
+## 报告结构（8章专业格式）
+
+综合网上10个最佳命理报告模板设计：
+
+```
+封面        — markdown表格: 姓名/性别/出生/年龄/生成时间
+第一章      命局总览 — 四柱表(传统时日月年格式)+五行力量条+强弱判定
+第二章      日主分析 — 日主性格白话+强弱白话解释("身弱的意思是...")
+第三章      用神喜忌 — 六书合参表+喜忌神白话总结(每个元素解释为什么喜/忌)
+第四章      人生专题 — 🎯性格 💼事业财运 💕婚姻感情 ⚕️健康养生 🏠六亲缘份
+              每项三层卡片: ▸命理依据 → ▸对你的影响 → ▸趋避建议
+第五章      大运走势 — 已过大运折叠，当前/未来每运独立卡片解读
+第六章      当前运势 — 当前大运+今年流年+明年预告+下一大运预告
+第七章      趋吉避凶 — 6维对照表(五行/行业/方位/颜色/贵人/季节)
+第八章      AI深度解读 — --ai启用时显示，原局/大运/流年
+附录        计分详情+古籍参考(折叠)
+```
+
+### 四柱表格式（传统）
+
+```
+| 时 | 日 | 月 | 年 | |
+| 十神 | 十神 | 十神 | 十神 | 十神 |
+| 天干 | 天干 | 天干 | 天干 | 天干 |
+| 地支 | 地支 | 地支 | 地支 | 地支 |
+```
+
+- 列序：时日月年（传统从右到左阅读，年柱在最右）
+- 十神紧贴天干上方，一眼看出天干什么十神
+- 标签（十神/天干/地支）在最右边
+
+## 十神×性别 传统规则
+
+引擎中涉及性别区分的维度，严格按传统命理规则：
+
+| 维度 | 十神 | 男命(乾造) | 女命(坤造) |
+|------|------|-----------|-----------|
+| 配偶星 | 财星 | ✅ 妻星 | — |
+| 配偶星 | 官杀 | — | ✅ 夫星 |
+| 子女星 | 官杀 | ✅ 子女（克我者为子女） | — |
+| 子女星 | 食伤 | — | ✅ 子女（我生者为子女） |
+| 母亲 | 印星 | ✅（正印偏印均可） | ✅ |
+| 父亲 | 偏财 | ✅（只有偏财，正财不是） | ✅ |
+| 兄弟 | 比劫 | ✅ | ✅ |
+| 配偶星混杂 | — | 财星混杂（正财+偏财同时现） | 官杀混杂（正官+七杀同时现） |
+
+实现位置：
+- `engine-marriage.ts`: 配偶星+混杂判断均区分性别
+- `engine-children.ts`: `ctx.gender === 'M' ? ctx.officials : ctx.outputStars`
+- `engine-later-life.ts`: 同上，子女依靠星
+- `engine-parents.ts`: `ctx.hasPianCai`（偏财=父），`ctx.seals`（印星=母）
+- `context.ts`: `hasPianCai: boolean` 新增字段，检测偏财是否在四柱或藏干中出现
+
+## L5a 架构详解
 
 ### 核心理念
 
@@ -100,7 +154,7 @@ interface StarQuality {
   touGan: boolean;    // 天干透出
   youGen: boolean;    // 地支有根（同五行藏干）
   zhuQi: boolean;     // 主气藏干
-  beiKe: boolean;     // 被克（有其他星克制它）
+  beiKe: boolean;     // 被克
   beiHe: boolean;     // 被合
 }
 
@@ -109,28 +163,25 @@ interface StarEvaluation {
   present: boolean;          // 是否存在且有力量（出现 + 元素分>0）
   strength: StrengthLevel;   // 力量等级
   quality: StarQuality;      // 品质维度
-  favorable: boolean;        // 是否为喜（替代旧的 isStarJi）
+  favorable: boolean;        // 是否为喜
   favorabilityReason: string; // 喜忌原因
   element: string;           // 对应五行
   score: number;             // 五行得分
   scoreRatio: number;        // 占总分比例
 }
 
-// 宫位评估
-interface PalaceEvaluation {
-  zhi: string; element: string; tenGod: string;
-  isYongShen: boolean; isJiShen: boolean;
-  clashes: string[]; combinations: string[]; harms: string[];
-  score: number;
-}
-
-// 顶层上下文
 interface SharedContext {
+  // 十神评估
   officials, seals, wealthStars, outputStars, peers: StarEvaluation;
+  // 宫位评估
   spousePalace, parentsPalace, childrenPalace, siblingsPalace: PalaceEvaluation;
-  elementScores, totalScore, missingElements, excessElements: ...;
-  dayGan, dayEl, dayStrength, yongShen, jiShen, pattern: ...;
-  dayunContext, gender, age, mixedOfficials: ...;
+  // 五行
+  elementScores, totalScore, missingElements, excessElements;
+  // 全局
+  dayGan, dayEl, dayStrength, yongShen, jiShen, pattern;
+  dayunContext, gender, age;
+  mixedOfficials: boolean;   // 官杀混杂
+  hasPianCai: boolean;       // 偏财是否存在（父亲星）
   isStrong, isWeak, specialPattern: boolean;
   starCount: Record<TenGodStar, number>;
 }
@@ -180,7 +231,7 @@ export function analyze<Dim>(ctx: SharedContext): AnalysisItem[] {
 
 ### 内容 JSON 规范
 
-所有 key 使用英文 snake_case：
+所有 key 使用英文 snake_case，文件存于 `src/specialty/content/<dim>/{yong,ji,base}.json`：
 
 | 类别 | 命名格式 | 示例 |
 |------|---------|------|
@@ -205,13 +256,17 @@ export function analyze<Dim>(ctx: SharedContext): AnalysisItem[] {
 11. **专项引擎内容外置** — 分析文本在 specialty/content/*.json，改描述不动代码
 12. **不得在代码中硬编码命理文本** — 违反则退回
 13. **不得用as any传递关键数据** — 用 PrecomputedData 类型
-14. **提交前跑 build + 24例回归**
-15. **L5a 统一判断框架** — 所有引擎通过 evaluator.ts + template-lookup.ts 统一判断，不再各自手写 offset 算术和 isStarJi
+14. **提交前跑 build + 28例回归**
+15. **L5a 统一判断框架** — 所有引擎通过 evaluator.ts + template-lookup.ts 统一判断
 16. **星力五级分级** — absent/weak/moderate/strong/very_strong，阈值 0%/5%/15%/25%
 17. **present = 出现 AND 元素分>0** — 出现但无力的星视为 absent，引擎跳过
 18. **内容 JSON key 全英文 snake_case** — 统一命名，查找链自动 fallback
-19. **旧版 *Engine() 返回空数组桩** — 保留兼容但不再产出内容
-20. **命格等级封顶B** — computeRating 基于用神有力程度+刑冲+五行平衡
+19. **命格等级封顶B** — computeRating 基于用神有力程度+刑冲+五行平衡
+20. **传统十神性别规则** — 男命官杀=子女/财=妻，女命食伤=子女/官杀=夫
+21. **偏财=父** — 只有偏财是父亲星，正财不是（区别于通用财星）
+22. **8章专业报告格式** — 封面→命局→日主→用神→专题→大运→当前→趋避→附录
+23. **四柱表传统格式** — 时日月年列序(右→左)，十神贴天干上，标签在右
+24. **大运卡片式** — 已过折叠，当前/未来展开为独立卡片含干支解读
 
 ## 测试
 
@@ -227,61 +282,45 @@ npx tsx packages/knowledge-base/src/__tests__/regression-l5a.test.ts      # L5a 
 
 # 单例端到端
 npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --scoring
+
+# 完整报告(含AI+PDF)
+npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" --report --pdf --ai
 ```
 
 回归测试数据: `data/cases.json` (28例) + `data/expected.json` (L3预期强弱)
 - L3 命中: 24/24（4例跳过：刘媛从格、黄楷钒/TEST-陈葆欣/TEST-AUTO 无预期）
-- L5a 验证: 28/28 全部通过（无预期文件，验证结构合规性+无异常）
+- L5a 验证: 28/28 全部通过（验证结构合规性+无异常）
 
-## 28例测试
+## 最新变更（2026-07-02）— 报告格式重设计 + 性别规则修正
 
-数据: `data/cases.json` + `data/expected.json`
-L3 命中: 24/24（刘媛从格待实现，已挂起）
-L5a 验证: 28/28 全部通过
-判定文件: `docs/research/scoring-results.md`
-回归汇总: `output/REGRESSION/regression-l5a-summary.json`
+### 报告格式重设计 (detailed.ts 完全重写)
+- **8章专业结构**: 封面→命局总览→日主分析→用神喜忌→人生专题→大运走势→当前运势→趋吉避凶
+- **封面**: markdown表格，简洁5行（姓名/性别/出生/年龄/生成时间）
+- **四柱表**: 传统时日月年列序，十神贴天干上，标签在右
+- **五行力量条**: 彩色ASCII bar，直观显示五行强弱对比
+- **日主分析**: 白话解释日主性格+强弱含义（"身弱的意思是..."）
+- **用神喜忌**: 六书合参表+每个喜忌元素白话解释为什么喜/忌
+- **人生专题**: 每项三层卡片（▸影响 + ▸建议），章节带图标
+- **大运走势**: 已过折叠，当前/未来每运独立卡片含干支+互动解读
+- **当前运势**: 当前大运+今年流年+明年预告+下一大运预告
+- **趋吉避凶**: 6维对照表（五行/行业/方位/颜色/贵人/季节）
+- **AI章节**: 作为独立第八章展示（--ai启用），不再折叠
+- **免责声明**: 报告末尾
 
-## 最新变更（2026-07-02）— L5a 全部重写
+### 性别规则修正（传统十神×性别）
+- **engine-marriage.ts**: 男命财星混杂(starCount.wealth>=2)、女命官杀混杂(mixedOfficials)
+- **engine-children.ts**: 男命官杀为子女星(克我者)、女命食伤为子女星(我生者)
+- **engine-later-life.ts**: 同上，子女依靠星按性别区分
+- **engine-parents.ts**: 偏财=父(hasPianCai)，印星=母
+- **context.ts**: 新增 `hasPianCai` 字段检测偏财存在性
+- **children/later-life content**: 新增 `officials` 模板（官杀为子女星）
+- **marriage content**: 新增 `mixedWealth` 模板（男命财星混杂）
 
-### 新建文件
-- `specialty/shared/evaluator.ts` — 统一十神评估器。包含：
-  - `evaluateStar()` — 评估单个十神的存在性/力量/品质/喜忌
-  - `evaluateAllStars()` — 批量评估全部5个十神
-  - `evaluatePalace()` — 宫位评估
-  - `determineFavorability()` — 喜忌判断（替代 isStarJi）
-  - `classifyStrength()` — 五级力量分级
-  - `tenGodElement()` / `tenGodOffset()` — 十神→五行映射
-  - `countStarPillars()` — 统计十神出现柱数
-  - `isSpecialPattern()` — 特殊格局检测
-- `specialty/shared/template-lookup.ts` — 统一模板查找。包含：
-  - `lookupStarTemplate()` — 星模板查找（优先级链 + fallback）
-  - `lookupComboTemplate()` — 组合模板查找（官印相生/食伤生财）
-  - `lookupPalaceTemplate()` — 宫位模板查找
-  - `lookupBaseTemplate()` — base.json 查找
-  - `lookupBaseNested()` — 嵌套 base 查找（dayGanTraits.壬）
-  - `lookupContentTemplateWithReplace()` — 内容模板+占位符替换
-- `__tests__/regression-l5a.test.ts` — L5a 28例回归测试
-
-### 重写文件
-- `specialty/shared/context.ts` — buildContext v2：
-  - SharedContext 类型的十神字段从 `StarPresence {present:boolean}` 升级为 `StarEvaluation`
-  - 宫位字段从 `PalaceInfo` 升级为 `PalaceEvaluation`
-  - 新增 `excessElements`, `isStrong`, `isWeak`, `specialPattern`, `starCount`
-  - 调用 evaluateAllStars() 统一评估
-- `specialty/shared/content-loader.ts` — 简化为纯加载函数，移除 isStarJi
-- 11个引擎文件 — 全部重写为统一模板模式：
-  - 移除手写 offset 算术、isStarJi 调用、ad-hoc key 构造
-  - 改用 `lookupStarTemplate()`, `lookupPalaceTemplate()`, `lookupComboTemplate()`
-  - 每个引擎 ~30行
-- `specialty/index.ts` — analyzeAllDimensions 使用新 SharedContext，computeRating 重写
-- `specialty/content/` — 所有 JSON key 统一英文 snake_case
-
-### 修改文件
-- `cli/src/detailed.ts` — 移除旧版 analyzeSpecialty fallback，只使用新引擎输出
-
-### 删除内容
-- `isStarJi()` 函数（移入 evaluator.determineFavorability）
-- 各引擎中的手写 offset 算术和 ad-hoc 模板 key 构造
+### L5a 全部重写（同日稍早）
+- 新建 evaluator.ts + template-lookup.ts，11引擎统一判断框架
+- StarPresence→StarEvaluation，PalaceInfo→PalaceEvaluation
+- 内容JSON key全英文snake_case，同步到src/specialty/content/
+- 新增 regression-l5a.test.ts (28例)
 
 ## 当前待办
 
