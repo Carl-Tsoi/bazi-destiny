@@ -475,19 +475,31 @@ export async function generateBaziReport(
     L.push('');
   }
 
-  // AI 分析（--ai 启用时）
+  // AI 深度解读（--ai 启用时）
   if (!birthInfo?.skipAi) {
     const aiData = (precomputed as any)?.aiResult;
     if (aiData?.yuanju) {
-      L.push('<details>');
-      L.push('<summary>🤖 AI 深度解读（实验性）</summary>');
+      L.push('## 第八章  AI 深度解读');
+      L.push('');
+      L.push('> 🤖 以下内容由 AI 模型生成，仅供参考。命理分析的核心结论以上述规则引擎产出为准。');
       L.push('');
       const clean = (s: string) => s.replace(/^###[^\n]*\n?/gm, '').trim();
-      L.push(clean(aiData.yuanju)); L.push('');
-      if (aiData.dayun) { L.push('**大运解读**'); L.push(''); L.push(clean(aiData.dayun)); L.push(''); }
-      if (aiData.liunian) { L.push('**流年解读**'); L.push(''); L.push(clean(aiData.liunian)); L.push(''); }
-      L.push('</details>');
+      L.push('### 原局分析');
       L.push('');
+      L.push(clean(aiData.yuanju));
+      L.push('');
+      if (aiData.dayun) {
+        L.push('### 大运解读');
+        L.push('');
+        L.push(clean(aiData.dayun));
+        L.push('');
+      }
+      if (aiData.liunian) {
+        L.push('### 流年解读');
+        L.push('');
+        L.push(clean(aiData.liunian));
+        L.push('');
+      }
     }
   }
 
