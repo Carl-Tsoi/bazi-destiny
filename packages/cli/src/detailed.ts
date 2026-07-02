@@ -84,12 +84,9 @@ export async function generateBaziReport(
   L.push('');
   L.push('| 项目 | 内容 |');
   L.push('|------|------|');
-  if (birthInfo?.name) L.push(`| 命主 | **${birthInfo.name}** |`);
+  if (birthInfo?.name) L.push(`| 姓名 | **${birthInfo.name}** |`);
   L.push(`| 性别 | ${genderLabel} |`);
   L.push(`| 出生 | ${birthInfo?.datetime ?? ''}（公历） |`);
-  L.push(`| 八字 | ${pillarOrder.map(k => colored(bazi.pillars[k].gan) + colored(bazi.pillars[k].zhi)).join(' ')} |`);
-  L.push(`| 日主 | ${colored(dayGan)}${dayEl} |`);
-  L.push(`| 格局 | ${bazi.pattern || '正格'} |`);
   L.push(`| 年龄 | ${age}岁 |`);
   L.push(`| 生成 | ${n} |`);
   L.push('');
