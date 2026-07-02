@@ -64,7 +64,7 @@ export async function generateBaziReport(
   const genderLabel = gender === 'M' ? '男' : '女';
   const dayGan = bazi.pillars.日柱.gan;
   const dayEl = WX_MAP[dayGan] ?? '';
-  const pillarOrder = ['时柱', '日柱', '月柱', '年柱'] as const;
+  const pillarOrder = ['年柱', '月柱', '日柱', '时柱'] as const;  // 传统从右到左
 
   // ── 预计算数据 ──
   const yongShenResult = precomputed?.yongShenResult
@@ -98,22 +98,23 @@ export async function generateBaziReport(
   L.push('## 第一章  命局总览');
   L.push('');
 
-  // 四柱表
-  L.push('| | 时 | 日 | 月 | 年 |');
-  L.push('|---|---:|---:|---:|---:|');
-  L.push('| 天干 | ' + pillarOrder.map(k => colored(bazi.pillars[k].gan)).join(' | ') + ' |');
-  L.push('| 地支 | ' + pillarOrder.map(k => colored(bazi.pillars[k].zhi)).join(' | ') + ' |');
-  L.push('| 十神 | ' + pillarOrder.map(k => bazi.pillars[k].shishen).join(' | ') + ' |');
-  L.push('| 主气 | ' + pillarOrder.map(k => {
+  // 四柱表（传统格式：年月日时，标签在右）
+  const pillarLabels = ['年', '月', '日', '时'];
+  L.push('| ' + pillarLabels.join(' | ') + ' | |');
+  L.push('|' + pillarLabels.map(() => ':---:').join('|') + '|:---|');
+  L.push('| ' + pillarOrder.map(k => bazi.pillars[k].shishen).join(' | ') + ' | 十神 |');
+  L.push('| ' + pillarOrder.map(k => colored(bazi.pillars[k].gan)).join(' | ') + ' | 天干 |');
+  L.push('| ' + pillarOrder.map(k => colored(bazi.pillars[k].zhi)).join(' | ') + ' | 地支 |');
+  L.push('| ' + pillarOrder.map(k => {
     const h = bazi.pillars[k].canggan[0];
     return h ? `${colored(h.stem)}(${h.tenGod})` : '—';
-  }).join(' | ') + ' |');
+  }).join(' | ') + ' | 主气 |');
   const maxCang = Math.max(...pillarOrder.map(k => bazi.pillars[k].canggan.length));
   for (let i = 1; i < maxCang; i++) {
-    L.push('| ' + (['中气', '余气'][i - 1] || '藏干') + ' | ' + pillarOrder.map(k => {
+    L.push('| ' + pillarOrder.map(k => {
       const h = bazi.pillars[k].canggan[i];
       return h ? `${colored(h.stem)}(${h.tenGod})` : '—';
-    }).join(' | ') + ' |');
+    }).join(' | ') + ' | ' + (['中气', '余气'][i - 1] || '藏干') + ' |');
   }
   L.push('');
 
