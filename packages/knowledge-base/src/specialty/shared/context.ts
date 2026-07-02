@@ -51,6 +51,7 @@ export interface SharedContext {
   gender: 'M' | 'F';
   age: number;
   mixedOfficials: boolean;
+  hasPianCai: boolean;    // 偏财是否存在（父亲星）
 
   // 衍生标记
   isStrong: boolean;
@@ -147,12 +148,15 @@ export function buildContext(
 
   // ── 官杀混杂 ──
   let zg = false, qs = false;
+  let hasPianCai = false; // 偏财=父亲星
   for (const p of Object.values(pillars)) {
     if (p.shishen === '正官') zg = true;
     if (p.shishen === '七杀') qs = true;
+    if (p.shishen === '偏财') hasPianCai = true;
     for (const h of p.canggan) {
       if (h.tenGod === '正官') zg = true;
       if (h.tenGod === '七杀') qs = true;
+      if (h.tenGod === '偏财') hasPianCai = true;
     }
   }
 
@@ -209,6 +213,7 @@ export function buildContext(
     gender: options?.gender ?? 'M',
     age: options?.age ?? 30,
     mixedOfficials: zg && qs,
+    hasPianCai,
     isStrong: score.dayStrength.includes('强') || score.dayStrength.includes('旺'),
     isWeak: score.dayStrength.includes('弱'),
     specialPattern: isSpecialPattern(chart.pattern),

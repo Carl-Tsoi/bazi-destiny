@@ -41,7 +41,7 @@ async function runTests() {
   const required = ['dayGan','dayEl','dayStrength','yongShen','jiShen',
     'officials','seals','wealthStars','outputStars','peers',
     'spousePalace','parentsPalace','childrenPalace','siblingsPalace',
-    'elementScores','totalScore','missingElements','dayunContext','pattern','gender','age','mixedOfficials'];
+    'elementScores','totalScore','missingElements','dayunContext','pattern','gender','age','mixedOfficials','hasPianCai'];
   let pass = 0, fail = 0;
   for (const key of required) {
     if ((ctx as any)[key] !== undefined) pass++;

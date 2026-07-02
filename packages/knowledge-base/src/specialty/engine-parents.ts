@@ -1,5 +1,5 @@
 /**
- * 专项引擎: 父母 (7/11) v3 — 统一评估器
+ * 专项引擎: 父母 (7/11) v3 — 传统规则: 印星=母, 偏财=父
  */
 import type { SharedContext } from './shared/context.js';
 import type { AnalysisItem, SpecContext } from './types.js';
@@ -15,18 +15,18 @@ export function parentsEngine(_ctx: SpecContext): string[] { return []; }
 export function analyzeParents(ctx: SharedContext): AnalysisItem[] {
   const items: AnalysisItem[] = [];
 
-  // 年柱宫位
+  // 年柱宫位（祖上/父母宫）
   const palaceItem = lookupPalaceTemplate(DIM, 'parentsPalace', ctx.parentsPalace, CDIR);
   if (palaceItem) items.push(palaceItem);
 
-  // 印星=母亲
+  // 印星=母亲（正印偏印均可）
   if (ctx.seals.present) {
     const item = lookupStarTemplate(DIM, 'seals', ctx.seals, CDIR);
     if (item) items.push(item);
   }
 
-  // 财星=父亲
-  if (ctx.wealthStars.present) {
+  // 偏财=父亲（只有偏财，正财不算）
+  if (ctx.hasPianCai) {
     const item = lookupStarTemplate(DIM, 'wealth', ctx.wealthStars, CDIR);
     if (item) items.push(item);
   }

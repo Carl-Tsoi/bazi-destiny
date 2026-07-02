@@ -1,5 +1,5 @@
 /**
- * 专项引擎: 子女 (6/11) v3 — 统一评估器
+ * 专项引擎: 子女 (6/11) v3 — 传统规则: 男命官杀为子女星, 女命食伤为子女星
  */
 import type { SharedContext } from './shared/context.js';
 import type { AnalysisItem, SpecContext } from './types.js';
@@ -15,9 +15,12 @@ export function childrenEngine(_ctx: SpecContext): string[] { return []; }
 export function analyzeChildren(ctx: SharedContext): AnalysisItem[] {
   const items: AnalysisItem[] = [];
 
-  // 子女星（食伤）
-  if (ctx.outputStars.present) {
-    const item = lookupStarTemplate(DIM, 'output', ctx.outputStars, CDIR);
+  // 子女星: 传统规则 — 男命官杀, 女命食伤
+  const childStar = ctx.gender === 'M' ? ctx.officials : ctx.outputStars;
+  const childKey = ctx.gender === 'M' ? 'officials' : 'output';
+
+  if (childStar.present) {
+    const item = lookupStarTemplate(DIM, childKey, childStar, CDIR);
     if (item) items.push(item);
   }
 
@@ -25,7 +28,7 @@ export function analyzeChildren(ctx: SharedContext): AnalysisItem[] {
   const palaceItem = lookupPalaceTemplate(DIM, 'childrenPalace', ctx.childrenPalace, CDIR);
   if (palaceItem) items.push(palaceItem);
 
-  // 财星 → 养育子女的经济基础
+  // 财星 → 养育子女的经济基础（通用）
   if (ctx.wealthStars.present) {
     const item = lookupStarTemplate(DIM, 'wealth', ctx.wealthStars, CDIR);
     if (item) items.push(item);

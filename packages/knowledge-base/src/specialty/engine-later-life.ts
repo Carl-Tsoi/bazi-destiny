@@ -1,5 +1,5 @@
 /**
- * 专项引擎: 晚年 (11/11) v3 — 统一评估器
+ * 专项引擎: 晚年 (11/11) v3 — 传统规则: 男命官杀为子女星→晚年依靠, 女命食伤
  */
 import type { SharedContext } from './shared/context.js';
 import type { AnalysisItem, SpecContext } from './types.js';
@@ -21,9 +21,12 @@ export function analyzeLaterLife(ctx: SharedContext): AnalysisItem[] {
     items.push(palaceItem);
   }
 
-  // 食伤(子女星) → 晚年依靠
-  if (ctx.outputStars.present) {
-    const item = lookupStarTemplate(DIM, 'output', ctx.outputStars, CDIR);
+  // 子女星 → 晚年依靠: 传统规则 — 男命官杀, 女命食伤
+  const childStar = ctx.gender === 'M' ? ctx.officials : ctx.outputStars;
+  const childKey = ctx.gender === 'M' ? 'officials' : 'output';
+
+  if (childStar.present) {
+    const item = lookupStarTemplate(DIM, childKey, childStar, CDIR);
     if (item) items.push(item);
   }
 
