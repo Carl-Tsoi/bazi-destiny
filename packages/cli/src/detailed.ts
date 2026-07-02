@@ -235,41 +235,65 @@ export async function generateBaziReport(
 
   lines.push('');
 
-  // 专项分析 — 优先使用新版引擎结果（L5预计算），fallback旧版
+  // ═══ 专项分析 ═══
   const specialtyV2 = (precomputed as any)?.specialty;
-  const birthYear = birthInfo ? new Date(birthInfo.datetime).getFullYear() : 1980;
-  const interactions = analyzeInteractions(bazi.pillars, bazi.dayun.steps, birthYear, bazi.pattern || '');
-  const flow = checkElementFlow(bazi.pillars);
-  lines.push('## 专项分析');
+  lines.push('## 命理专项分析');
   lines.push('');
 
-  const chapterMap: Record<string,string> = {
-    '性格':'五','事业':'六','财运':'六','婚姻':'七','健康':'八',
-    '子女':'九','父母':'九','人际':'九','兄弟':'九','田宅':'九','晚年':'九'
+  const chapterDefs: Record<string, { order: number; title: string; icon: string; dims: string[] }> = {
+    personality: { order: 1, title: '性格特质', icon: '🎯', dims: ['性格'] },
+    careerWealth: { order: 2, title: '事业财运', icon: '💼', dims: ['事业', '财运'] },
+    marriage: { order: 3, title: '婚姻感情', icon: '💕', dims: ['婚姻'] },
+    health: { order: 4, title: '健康养生', icon: '⚕️', dims: ['健康'] },
+    family: { order: 5, title: '六亲缘份', icon: '🏠', dims: ['子女', '父母', '人际', '兄弟', '田宅', '晚年'] },
   };
-  let lastChapter = '';
 
   if (specialtyV2?.dimensions) {
-    for (const dim of specialtyV2.dimensions) {
-      if (!dim.items || dim.items.length === 0) continue;
-      const ch = chapterMap[dim.dimension] || '';
-      if (ch && ch !== lastChapter) {
-        const titles: Record<string,string> = {
-          '五':'性格分析','六':'事业财运','七':'婚姻家庭','八':'健康提示','九':'六亲简析'
-        };
-        lines.push(`### ${titles[ch] || dim.dimension}`);
-        lines.push('');
-        lastChapter = ch;
+    // 按 chapter 重新组织维度
+    const dimMap = new Map<string, any[]>(
+      specialtyV2.dimensions.map((d: any) => [d.dimension as string, d.items as any[]])
+    );
+
+    const chapters = Object.entries(chapterDefs)
+      .sort((a, b) => a[1].order - b[1].order);
+
+    for (const [, chapter] of chapters) {
+      // 收集本章有内容的维度
+      const chapterItems: Array<{ dim: string; item: any }> = [];
+      for (const dimName of chapter.dims) {
+        const items = dimMap.get(dimName) || [];
+        for (const item of items) {
+          chapterItems.push({ dim: dimName, item });
+        }
       }
-      lines.push(`**${dim.dimension}**`);
-      for (const item of dim.items) {
-        lines.push(`- **${item.layer1}**`);
-        lines.push(`  ${item.layer2}`);
-        lines.push(`  > ${item.layer3}`);
-      }
+      if (chapterItems.length === 0) continue;
+
+      lines.push(`### ${chapter.icon} ${chapter.title}`);
       lines.push('');
+
+      for (const { dim, item } of chapterItems) {
+        // 每个 item 作为一个段落块
+        // 用 layer1 的前20字做小标题
+        const title = item.layer1.length > 40
+          ? item.layer1.slice(0, 40).replace(/[，,。；;]$/, '') + '…'
+          : item.layer1;
+
+        lines.push(`**${item.layer1}**`);
+        lines.push('');
+        lines.push(`<span style="color:#666;">▸ 对你的影响</span>`);
+        lines.push(item.layer2);
+        lines.push('');
+        lines.push(`<span style="color:#1976D2;">▸ 趋避建议</span>`);
+        lines.push(item.layer3);
+        lines.push('');
+        lines.push('---');
+        lines.push('');
+      }
     }
-    lines.push(`**命格等级: ${specialtyV2.rating.grade}** — ${specialtyV2.rating.summary}`);
+
+    // 命格等级
+    const gradeEmoji: Record<string, string> = { 'A': '🏆', 'B': '⭐', 'C': '📊', 'D': '🔍' };
+    lines.push(`**${gradeEmoji[specialtyV2.rating.grade] || ''} 命格等级: ${specialtyV2.rating.grade}** — ${specialtyV2.rating.summary}`);
     lines.push('');
   }
 
