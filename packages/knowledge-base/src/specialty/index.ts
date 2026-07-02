@@ -1,4 +1,8 @@
-/** 专项断事 — 11引擎编排器 */
+/**
+ * 专项断事 — 11引擎编排器 v3
+ *
+ * 统一判断框架: evaluateStar → lookupTemplate → AnalysisItem
+ */
 
 import type { BaziChart } from '@bazi-destiny/core';
 import { buildContext, type SharedContext } from './shared/context.js';
@@ -52,77 +56,54 @@ export function analyzeAllDimensions(
   const ctx = buildContext(chart, score, analysis, options);
 
   const dimensions: DimensionResult[] = [
-    { dimension: '性格', items: (() => { const items = analyzePersonality(ctx); addRisks(items, '性格', ctx); return items; })() },
-    { dimension: '事业', items: (() => { const items = analyzeCareer(ctx); addRisks(items, '事业', ctx); return items; })() },
-    { dimension: '财运', items: (() => { const items = analyzeWealth(ctx); addRisks(items, '财运', ctx); return items; })() },
-    { dimension: '婚姻', items: (() => { const items = analyzeMarriage(ctx); addRisks(items, '婚姻', ctx); return items; })() },
-    { dimension: '健康', items: (() => { const items = analyzeHealth(ctx); addRisks(items, '健康', ctx); return items; })() },
-    { dimension: '子女', items: (() => { const items = analyzeChildren(ctx); addRisks(items, '子女', ctx); return items; })() },
-    { dimension: '父母', items: (() => { const items = analyzeParents(ctx); addRisks(items, '父母', ctx); return items; })() },
-    { dimension: '人际', items: (() => { const items = analyzeBenefactors(ctx); addRisks(items, '人际', ctx); return items; })() },
-    { dimension: '兄弟', items: (() => { const items = analyzeSiblings(ctx); addRisks(items, '兄弟', ctx); return items; })() },
-    { dimension: '田宅', items: (() => { const items = analyzeProperty(ctx); addRisks(items, '田宅', ctx); return items; })() },
-    { dimension: '晚年', items: (() => { const items = analyzeLaterLife(ctx); addRisks(items, '晚年', ctx); return items; })() },
+    { dimension: '性格', items: analyzePersonality(ctx) },
+    { dimension: '事业', items: analyzeCareer(ctx) },
+    { dimension: '财运', items: analyzeWealth(ctx) },
+    { dimension: '婚姻', items: analyzeMarriage(ctx) },
+    { dimension: '健康', items: analyzeHealth(ctx) },
+    { dimension: '子女', items: analyzeChildren(ctx) },
+    { dimension: '父母', items: analyzeParents(ctx) },
+    { dimension: '人际', items: analyzeBenefactors(ctx) },
+    { dimension: '兄弟', items: analyzeSiblings(ctx) },
+    { dimension: '田宅', items: analyzeProperty(ctx) },
+    { dimension: '晚年', items: analyzeLaterLife(ctx) },
   ];
 
   return { dimensions, rating: computeRating(ctx) };
 }
 
-
-/** 从 JSON 加载风险项，匹配条件后追加入 items */
-function addRisks(items: AnalysisItem[], dimName: string, ctx: SharedContext): void {
-  const dimKey: Record<string,string> = {'人际':'benefactors','晚年':'later-life','兄弟':'siblings','田宅':'property'};
-  const key = dimKey[dimName] || dimName;
-  try {
-    const { readFileSync } = require('fs');
-    const { join } = require('path');
-    const data = JSON.parse(readFileSync(join(__dirname, 'content', key + '.json'), 'utf-8'));
-    const risks = data.risks;
-    if (!risks) return;
-    for (const [name, rule] of Object.entries(risks) as any) {
-      if (rule.condition && matchRiskCond(rule.condition, ctx)) {
-        items.push({ level: '参考', layer1: rule.l1 || '', layer2: rule.l2 || '', layer3: rule.l3 || '' });
-      }
-    }
-  } catch { /* risks are optional, skip on any error */ }
-}
-
-function matchRiskCond(cond: string, ctx: SharedContext): boolean {
-  return cond.split(/\s+AND\s+/i).every(p => {
-    const trimmed = p.trim();
-    if (trimmed.includes(' OR ')) {
-      return trimmed.split(/\s+OR\s+/i).some(orPart => matchRiskCond(orPart.trim(), ctx));
-    }
-    const [path, val] = trimmed.split('.');
-    const parts = path.split('.');
-    let obj: any = ctx;
-    for (const k of parts) obj = obj?.[k];
-    if (Array.isArray(obj)) {
-      if (val === '>0') return obj.length > 0;
-      return String(obj.length) === val;
-    }
-    if (typeof obj === 'object' && obj !== null && 'present' in obj) return obj.present === (val === 'true');
-    if (typeof obj === 'boolean') return obj === (val === 'true');
-    return String(obj) === val;
-  });
-}
+// ── 命格等级 v2 ──────────────────────────────────
 
 function computeRating(ctx: SharedContext): { grade: string; summary: string } {
-  let gs = 0;
-  if (ctx.pattern && !ctx.pattern.includes("未定")) gs += 1;
-  if (ctx.dayStrength === '身强') gs += 2;
-  if (ctx.wealthStars.present) gs += 1;
-  if (ctx.officials.present) gs += 1;
-  const clashCount = [ctx.spousePalace, ctx.parentsPalace, ctx.childrenPalace, ctx.siblingsPalace]
-    .filter(p => p.clashes.length > 0).length;
-  if (clashCount <= 1) gs += 1;
+  let score = 0;
 
-  let grade: string, summary: string;
-  if (gs >= 5) { grade = 'B'; summary = '格局明确，身强能担，财官有气，刑冲较少。命格层次较佳。'; }
-  else if (gs >= 3) { grade = 'B'; summary = '格局可用但有不足之处，需大运补足。中等命格。'; }
-  else if (gs >= 1) { grade = 'C'; summary = '格局有缺，需大运扶持方可有成。'; }
-  else { grade = 'D'; summary = '格局不明，刑冲较多，波折较多。'; }
-  return { grade, summary };
+  // 格局明确度 (0-2)
+  if (ctx.pattern && !ctx.pattern.includes('未定')) {
+    score += ctx.specialPattern ? 1 : 2;
+  }
+
+  // 用神有力程度 (0-3): favorable + moderate+
+  const allStars = [ctx.officials, ctx.seals, ctx.wealthStars, ctx.outputStars, ctx.peers];
+  const yongStars = allStars.filter(
+    s => s.favorable && s.strength !== 'absent' && s.strength !== 'weak'
+  );
+  if (yongStars.length >= 3) score += 3;
+  else if (yongStars.length >= 1) score += 1;
+
+  // 刑冲程度 (0-2): 宫位刑冲越少越好
+  const clashPalaces = [ctx.spousePalace, ctx.parentsPalace, ctx.childrenPalace, ctx.siblingsPalace]
+    .filter(p => p.clashes.length > 0);
+  if (clashPalaces.length === 0) score += 2;
+  else if (clashPalaces.length <= 1) score += 1;
+
+  // 五行平衡 (0-1)
+  if (ctx.missingElements.length === 0 && ctx.excessElements.length <= 1) score += 1;
+
+  // 等级判定（封顶B）
+  if (score >= 7) return { grade: 'B', summary: '格局明确，用神得力，五行流通，刑冲少。命格层次较佳。' };
+  if (score >= 5) return { grade: 'B', summary: '格局可用，用神有力但有不足，需大运扶持。中等偏上。' };
+  if (score >= 3) return { grade: 'C', summary: '格局有缺，用神乏力或刑冲较多，波折较多需大运补救。' };
+  return { grade: 'D', summary: '格局不明，用神受制，五行失衡，一生波折较多。' };
 }
 
 // ── 旧版接口（向后兼容，待迁移完成后移除） ──

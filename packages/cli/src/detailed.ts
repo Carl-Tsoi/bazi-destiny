@@ -2,7 +2,7 @@
  * 八字详细分析报告
  */
 import type { BaziChart } from '@bazi-destiny/core';
-import { determineYongShen, judgeDayun, analyzeSpecialty, analyzeInteractions, checkElementFlow, CLIMATE_COEFF } from '@bazi-destiny/knowledge-base';
+import { determineYongShen, judgeDayun, analyzeInteractions, checkElementFlow, CLIMATE_COEFF } from '@bazi-destiny/knowledge-base';
 import type { YongShenResult } from '@bazi-destiny/knowledge-base';
 import { generateNarratives } from '@bazi-destiny/reports';
 
@@ -270,19 +270,6 @@ export async function generateBaziReport(
       lines.push('');
     }
     lines.push(`**命格等级: ${specialtyV2.rating.grade}** — ${specialtyV2.rating.summary}`);
-    lines.push('');
-  } else {
-    // 旧版 fallback
-    const specialty = analyzeSpecialty(bazi, yongShenResult.fuyi.dayStrength, bazi.pattern || '', birthInfo?.gender);
-    for (const dim of BAZI_DIMENSIONS) {
-      const dimNotes = baziDimension(bazi, dim.id, interactions, { gender: birthInfo?.gender, xiShen: yongShenResult.final.xiShen });
-      if (dimNotes.length > 0) {
-        lines.push(`**${dim.name}**`);
-        for (const note of dimNotes) lines.push(`- ${note}`);
-        lines.push('');
-      }
-    }
-    lines.push(`**命格等级: ${specialty.rating.grade}** — ${specialty.rating.summary}`);
     lines.push('');
   }
 

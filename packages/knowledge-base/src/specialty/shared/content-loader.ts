@@ -1,16 +1,12 @@
 /**
  * 内容加载器 — 所有专项引擎共享
- * 从 collector 产出读取 (bazi-knowledge-collector/output/content/)
+ * 从本地 specialty/content/ 读取（由 bazi-knowledge-collector 产出到此目录）
+ *
+ * v3: 改用 localDir 参数，读 destiny 自己的 content 目录
  */
+
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { SharedContext } from './context.js';
-
-// collector 产出路径 (Lucky 同级项目)
-const COLLECTOR_OUTPUT = join(
-  import.meta.dirname, '..', '..', '..', '..', '..', '..',
-  'bazi-knowledge-collector', 'output', 'content',
-);
 
 const _cache: Record<string, any> = {};
 
@@ -22,20 +18,20 @@ function loadJson(filePath: string): any {
   return _cache[filePath];
 }
 
+/**
+ * 加载维度内容（yong.json 或 ji.json）
+ */
 export function loadContent(
-  _localDir: string, dim: string, favour: 'yong' | 'ji',
+  localDir: string,
+  dim: string,
+  favour: 'yong' | 'ji',
 ): any {
-  return loadJson(join(COLLECTOR_OUTPUT, dim, `${favour}.json`));
+  return loadJson(join(localDir, dim, `${favour}.json`));
 }
 
-export function loadBase(_localDir: string, dim: string): any {
-  return loadJson(join(COLLECTOR_OUTPUT, dim, 'base.json'));
-}
-
-// ── 统一的喜忌判断 ──────────────────────────────────
-const ORDER = ['木','火','土','金','水'];
-
-export function isStarJi(ctx: SharedContext, offset: number): boolean {
-  const di = ORDER.indexOf(ctx.dayEl);
-  return ctx.jiShen.includes(ORDER[(di + offset) % 5]);
+/**
+ * 加载维度基础内容（base.json）
+ */
+export function loadBase(localDir: string, dim: string): any {
+  return loadJson(join(localDir, dim, 'base.json'));
 }

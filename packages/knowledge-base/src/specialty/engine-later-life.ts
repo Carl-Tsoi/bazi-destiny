@@ -1,27 +1,43 @@
+/**
+ * 专项引擎: 晚年 (11/11) v3 — 统一评估器
+ */
 import type { SharedContext } from './shared/context.js';
 import type { AnalysisItem, SpecContext } from './types.js';
 import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
-import { loadContent, loadBase, isStarJi } from './shared/content-loader.js';
+import {
+  lookupStarTemplate, lookupPalaceTemplate,
+} from './shared/template-lookup.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'later-life';
-function Y():any{return loadContent(CDIR,DIM,'yong');}
-function J():any{return loadContent(CDIR,DIM,'ji');}
-function B():any{return loadBase(CDIR,DIM);}
-export function laterLifeEngine(ctx:SpecContext):string[]{return[''];};
-export function analyzeLaterLife(ctx:SharedContext):AnalysisItem[]{
-  const items:AnalysisItem[]=[];
+
+export function laterLifeEngine(_ctx: SpecContext): string[] { return []; }
+
+export function analyzeLaterLife(ctx: SharedContext): AnalysisItem[] {
+  const items: AnalysisItem[] = [];
+
   // 子女宫 → 晚年依靠
-  if(ctx.childrenPalace.isJiShen){const t=J().laterLife;if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
-  else{const t=Y().laterLife;if(t)items.push({level:'确定',layer1:t.l1,layer2:t.l2,layer3:t.l3});}
+  const palaceItem = lookupPalaceTemplate(DIM, 'childrenPalace', ctx.childrenPalace, CDIR);
+  if (palaceItem) {
+    items.push(palaceItem);
+  }
+
+  // 食伤(子女星) → 晚年依靠
+  if (ctx.outputStars.present) {
+    const item = lookupStarTemplate(DIM, 'output', ctx.outputStars, CDIR);
+    if (item) items.push(item);
+  }
+
   // 财星 → 晚年经济状况
-  if(ctx.wealthStars.present){
-    const ji=isStarJi(ctx,2); const t=(ji?J():Y())['wealth'];
-    if(t)items.push({level:'参考',layer1:t.l1,layer2:t.l2,layer3:t.l3});
+  if (ctx.wealthStars.present) {
+    const item = lookupStarTemplate(DIM, 'wealth', ctx.wealthStars, CDIR);
+    if (item) items.push(item);
   }
+
   // 印星 → 晚年精神寄托
-  if(ctx.seals.present){
-    const ji=isStarJi(ctx,4); const t=(ji?J():Y())['seals'];
-    if(t)items.push({level:'参考',layer1:t.l1,layer2:t.l2,layer3:t.l3});
+  if (ctx.seals.present) {
+    const item = lookupStarTemplate(DIM, 'seals', ctx.seals, CDIR);
+    if (item) items.push(item);
   }
+
   return items;
 }
