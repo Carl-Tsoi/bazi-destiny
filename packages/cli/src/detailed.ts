@@ -171,17 +171,16 @@ export async function generateBaziReport(
   L.push('## 第三章  用神喜忌');
   L.push('');
 
-  // 六书合参
-  L.push('### 六书合参');
+  // 六书合参 — 只显示最终胜出的那一个格局
+  L.push('### 格局判定');
   L.push('');
-  L.push('| 分析维度 | 类型 | 用神 | 诊断 |');
-  L.push('|----------|------|------|------|');
   const typeNames: Record<string, string> = { 格局用神: '格局', 平衡用神: '扶抑', 调候用神: '调候', 病药用神: '病药', 神煞: '神煞', 奇格: '奇格' };
-  for (const e of yongShenResult.engines ?? []) {
-    // 过滤"不入"的变格引擎 — 只显示最终生效的格局判断
-    const diag = e.diagnostics.join('；');
-    if (diag.includes('不入')) continue;
-    L.push(`| ${e.name} | ${typeNames[e.yongShenType ?? ''] ?? ''} | ${e.yongShen ?? '—'} | ${diag} |`);
+  const winner = (yongShenResult.engines ?? []).find((e: any) => !e.diagnostics.join('；').includes('不入'));
+  if (winner) {
+    const diag = winner.diagnostics.join('；');
+    L.push(`**${winner.name}** — ${diag}`);
+  } else {
+    L.push(`**正格** — ${bazi.pattern || '正格'}，${yongShenResult.fuyi.dayStrength}`);
   }
   L.push('');
 
