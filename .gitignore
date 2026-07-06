@@ -10,3 +10,5 @@ scripts/
 data/*/
 data/bazi-destiny.db
 bazi-destiny.db
+*.db-shm
+*.db-wal
