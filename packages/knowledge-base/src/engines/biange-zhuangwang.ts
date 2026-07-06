@@ -95,9 +95,9 @@ export function zhuangwangEngine(ctx: LayeredContext): EngineResult {
   }
 
   // ── 极端门槛：自党 > 70% ──
+  // fuyi.dayScore = scores[日主五行] 已含所有比劫分，只需加印星分
   const sealEl = ORDER[(di + 4) % 5]; // 印星五行
-  const peerEl = dayEl;               // 比劫五行
-  const ziDangScore = fuyi.dayScore + (scores[sealEl] ?? 0) + (scores[peerEl] ?? 0);
+  const ziDangScore = fuyi.dayScore + (scores[sealEl] ?? 0);
   const ziDangRatio = total > 0 ? ziDangScore / total : 0;
   if (ziDangRatio <= 0.70) {
     return {
