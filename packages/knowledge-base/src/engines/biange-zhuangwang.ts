@@ -56,13 +56,42 @@ const ZHUANGWANG_JI: Record<string, string[]> = {
 };
 
 function hasSanHui(zhis: string[], wx: string): boolean {
-  return (SAN_HUI[wx] || []).every(z => zhis.includes(z));
+  const hui = SAN_HUI[wx];
+  if (!hui || hui.length === 0) return false;
+  return hui.every(z => zhis.includes(z));
 }
 function hasSanHe(zhis: string[], wx: string): boolean {
-  return (SAN_HE[wx] || []).every(z => zhis.includes(z));
+  const he = SAN_HE[wx];
+  if (!he || he.length === 0) return false;
+  const zhiSet = new Set(zhis);
+  // 合局不能被冲散: 检查合局中的地支是否被冲
+  const heStr = he.join('');
+  const isChonged = checkChongBreak(zhis, he);
+  return !isChonged && he.every(z => zhiSet.has(z));
 }
 function hasBanHe(zhis: string[], wx: string): boolean {
-  return (BAN_HE[wx] || []).some(pair => pair.every(z => zhis.includes(z)));
+  const pairs = BAN_HE[wx];
+  if (!pairs || pairs.length === 0) return false;
+  const zhiSet = new Set(zhis);
+  return pairs.some(pair => {
+    if (!pair.every(z => zhiSet.has(z))) return false;
+    // 半合也不能被冲散
+    return !checkChongBreak(zhis, pair);
+  });
+}
+/** 检查指定的地支组是否被六冲破坏 */
+function checkChongBreak(allZhis: string[], group: string[]): boolean {
+  const CHONG: Record<string, string> = {
+    '子': '午', '午': '子', '丑': '未', '未': '丑',
+    '寅': '申', '申': '寅', '卯': '酉', '酉': '卯',
+    '辰': '戌', '戌': '辰', '巳': '亥', '亥': '巳',
+  };
+  const groupSet = new Set(group);
+  for (const z of allZhis) {
+    const chong = CHONG[z];
+    if (chong && groupSet.has(chong)) return true; // 冲到了合局中的支
+  }
+  return false;
 }
 function monthIsWang(monthZhi: string, wx: string): boolean {
   return ZHI_WX[monthZhi] === wx;
