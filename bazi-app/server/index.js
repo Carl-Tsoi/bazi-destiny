@@ -160,9 +160,21 @@ form button{padding:12px;background:#8b6914;color:#fff;border:none;border-radius
 </style></head><body>
 <h1>八字命理分析系统</h1>
 <p class="bar">命例总数 ${total} · 已生成报告 ${withReport}</p>
+<div style="text-align:center;margin:16px 0">
+  <input id="search" type="text" placeholder="搜索姓名..." style="padding:10px 16px;border-radius:8px;border:1px solid #e0d5c0;background:#fdfaf5;color:#333;width:260px;font-size:15px" oninput="search()">
+</div>
 <div class="btns"><a href="/new">+ 新增命例</a></div>
+<script>
+function search(){
+  const q=document.getElementById('search').value;
+  fetch('/api/subjects?q='+encodeURIComponent(q)).then(r=>r.json()).then(data=>{
+    const tbody=document.querySelector('tbody');
+    tbody.innerHTML=data.map(s=>'<tr><td><a href=\"/report/'+s.id+'\">'+(s.name||'-')+'</a></td><td>'+(s.gender==='M'?'男':'女')+'</td><td>'+(s.datetime||'').replace('T',' ')+'</td><td>'+(s.dayGan||'')+(s.dayZhi||'')+'</td><td>'+(s.pattern||'')+'</td><td>'+(s.yongShen||'')+'</td><td>'+(s.grade||'')+'</td></tr>').join('');
+    document.querySelector('.bar').textContent='搜索结果: '+data.length+' 条';
+  });
+}
+</script>
 <table><thead><tr><th>姓名</th><th>性别</th><th>出生</th><th>日柱</th><th>格局</th><th>用神</th><th>等级</th></tr></thead><tbody>${rows}</tbody></table>
-<script>fetch('/api/stats').then(r=>r.json()).then(d=>{document.querySelector('.bar').textContent='命例 '+d.total+' · 报告 '+d.withReport+' · 身强'+d.strength.filter(x=>x.day_strength==='身强')[0]?.c+' 身弱'+d.strength.filter(x=>x.day_strength==='身弱')[0]?.c})</script>
 </body></html>`);
 });
 
