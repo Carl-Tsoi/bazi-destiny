@@ -8,7 +8,7 @@
  *   bazi-destiny "1990-01-15 14:30" --lat 39.9 --lon 116.4 --gender M --debug
  */
 import { Command } from 'commander';
-import { BirthInfoSchema, initDatabase, upsertSubject, getL2Chart, getL3Score, getL4Analysis, writeL2Chart, writeL3Score, writeL4Analysis, writeL5Specialty, writeL6Report } from '@bazi-destiny/core';
+import { BirthInfoSchema, initDatabase, upsertSubject, getL2Chart, getL3Score, getL4Analysis, writeL2Chart, writeL3Score, writeL4Analysis, writeL5Specialty, writeL6Report, type SubjectRow, type BirthInfo } from '@bazi-destiny/core';
 import { BaziEngine } from '@bazi-destiny/engine-bazi';
 import { renderBazi } from './ascii.js';
 import { runSensitivity } from './sensitivity.js';
@@ -18,7 +18,6 @@ import { generateBaziReport, generateScoringReport } from './detailed.js';
 import type { PrecomputedData } from './types.js';
 import { generateAiAnalyses } from '@bazi-destiny/reports';
 import type { AiInput } from '@bazi-destiny/reports';
-import { homedir } from 'os';
 import { join, dirname } from 'path';
 
 const program = new Command();
@@ -26,9 +25,10 @@ const program = new Command();
 program
   .name('bazi-destiny')
   .description('Three-system cross-validation destiny analysis CLI')
-  .argument('<datetime>', 'Birth datetime (YYYY-MM-DD HH:MM)')
-  .requiredOption('--gender <M|F>', 'Gender (M or F)')
-  .requiredOption('--name <name>', 'Person name (required for record keeping)')
+  .argument('[datetime]', 'Birth datetime (YYYY-MM-DD HH:MM), optional if --subject-id provided')
+  .option('--gender <M|F>', 'Gender (M or F)')
+  .option('--name <name>', 'Person name (required)')
+  .option('--subject-id <id>', 'Run from existing subject in DB (skips L1)')
   .option('--lat <number>', 'Birth latitude (-90 to 90)', parseFloat)
   .option('--lon <number>', 'Birth longitude (-180 to 180)', parseFloat)
   .option('--true-solar', 'Enable true solar time correction (requires --lat --lon)')
@@ -45,29 +45,52 @@ program
   .option('--pdf', 'Generate PDF from markdown report (requires --report --output)')
   .action(async (datetime, options) => {
     try {
-      // Default to Beijing time; only use coordinates if --true-solar
-      const lat = options.trueSolar ? (options.lat ?? 0) : 0;
-      const lon = options.trueSolar ? (options.lon ?? 0) : 0;
+      const fs = await import('fs');
+      const projectRoot = join(import.meta.dirname, '..', '..', '..');
+      const dbPath = join(projectRoot, 'bazi-destiny.db');
+      const db = initDatabase(dbPath);
 
-      // Validate input
-      const birthInfo = BirthInfoSchema.parse({
-        datetime: datetime.replace(' ', 'T'),
-        latitude: lat,
-        longitude: lon,
-        timezone: 'Asia/Shanghai',
-        gender: options.gender,
-      });
+      let birthInfo: BirthInfo;
+      let subjectId: number;
+
+      if (options.subjectId) {
+        // ── 从 DB 读取已有 subject ──
+        const row = db.prepare('SELECT * FROM subjects WHERE id = ?').get(options.subjectId) as SubjectRow | undefined;
+        if (!row) { console.error(`Subject ${options.subjectId} not found in DB`); process.exit(1); }
+        subjectId = row.id;
+        datetime = row.datetime.replace('T', ' ');
+        birthInfo = BirthInfoSchema.parse({
+          datetime: row.datetime,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          timezone: row.timezone,
+          gender: row.gender,
+        });
+        options.gender = row.gender;
+        options.name = row.name ?? undefined;
+        console.log(`L1: 从DB读取 subject #${subjectId} — ${row.name} ${row.gender} ${datetime}`);
+      } else {
+        // ── 新 subject：校验必填项 ──
+        if (!datetime) { console.error('datetime required when --subject-id not provided'); process.exit(1); }
+        if (!options.gender) { console.error('--gender required when --subject-id not provided'); process.exit(1); }
+        if (!options.name) { console.error('--name required when --subject-id not provided'); process.exit(1); }
+        const lat = options.trueSolar ? (options.lat ?? 0) : 0;
+        const lon = options.trueSolar ? (options.lon ?? 0) : 0;
+        birthInfo = BirthInfoSchema.parse({
+          datetime: datetime.replace(' ', 'T'),
+          latitude: lat, longitude: lon,
+          timezone: 'Asia/Shanghai',
+          gender: options.gender,
+        });
+        // L1: 注册
+        subjectId = upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
+        console.log(`L1: 注册 subject #${subjectId} — ${options.name}`);
+      }
 
       // 只初始化八字引擎（紫微/占星后续开发时启用）
       const engines = [
         { name: 'bazi', engine: new BaziEngine() },
       ];
-
-      const fs = await import('fs');
-      // Initialize database — DB at bazi-destiny/ project root
-      const projectRoot = join(import.meta.dirname, '..', '..', '..');
-      const dbPath = join(projectRoot, 'bazi-destiny.db');
-      const db = initDatabase(dbPath);
 
       // Run engines in parallel
       const results = await Promise.allSettled(
@@ -115,9 +138,6 @@ program
       let precomputed: PrecomputedData | undefined;
       if (outputs.bazi) {
         const bazi = outputs.bazi as Record<string, unknown>;
-
-        // ── L1: 命主注册 ──
-        const subjectId = upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
 
         // ── L2: 排盘 → DB ──
         const chart: ChartResult = {
