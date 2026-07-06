@@ -84,6 +84,57 @@ app.get('/api/stats', (req, res) => {
   res.json({ total, withReport, strength, grades });
 });
 
+app.get('/stats', (req, res) => {
+  const db = getDb();
+  const total = db.prepare('SELECT COUNT(*) as c FROM subjects').get().c;
+  const withReport = db.prepare('SELECT COUNT(DISTINCT subject_id) as c FROM l6_reports').get().c;
+  const strength = db.prepare("SELECT day_strength, COUNT(*) as c FROM l3_scores GROUP BY day_strength").all();
+  const grades = db.prepare("SELECT grade, COUNT(*) as c FROM l5_specialties GROUP BY grade ORDER BY grade").all();
+  const patterns = db.prepare("SELECT l4.engines_json FROM subjects s JOIN l4_analyses l4 ON s.id=l4.subject_id").all();
+  let normal=0, cong=0, zhwang=0, shizhi=0;
+  for(const r of patterns){
+    const e=JSON.parse(r.engines_json);
+    if(e.find(x=>x.name==='专旺格'&&!x.diagnostics[0].includes('不入'))) zhwang++;
+    else if(e.find(x=>x.name==='从格'&&!x.diagnostics[0].includes('不入'))) cong++;
+    else if(e.find(x=>x.name==='食神制杀'&&!x.diagnostics[0].includes('不入'))) shizhi++;
+    else normal++;
+  }
+  const gradesMap = Object.fromEntries(grades.map(g=>[g.grade,g.c]));
+  const strMap = Object.fromEntries(strength.map(s=>[s.day_strength,s.c]));
+  db.close();
+  res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>数据总览</title>
+<style>body{font-family:'PingFang SC',sans-serif;background:#f5f0eb;color:#333;margin:0;padding:20px}
+h1{color:#8b6914;text-align:center}.nav{margin-bottom:16px}a{color:#8b6914}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card h2{color:#8b6914;font-size:18px;margin:0 0 16px;border-bottom:2px solid #e8d5b0;padding-bottom:8px}
+.stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0e8d8}
+.bar-row{display:flex;align-items:center;margin:8px 0}
+.bar-label{width:60px;font-size:14px}.bar-track{flex:1;height:20px;background:#f0e8d8;border-radius:10px;margin:0 12px;overflow:hidden}
+.bar-fill{height:100%;border-radius:10px;transition:width .5s}
+.num{font-size:32px;font-weight:bold;color:#8b6914;text-align:center;margin:12px 0}</style></head><body>
+<div class="nav"><a href="/">← 命例列表</a> | <a href="/new">+ 新增</a></div>
+<h1>数据总览</h1>
+<div class="grid">
+<div class="card"><h2>基本统计</h2>
+  <div class="num">${total}</div><div style="text-align:center;color:#999">命例总数</div>
+  <div class="num">${withReport}</div><div style="text-align:center;color:#999">已生成报告</div>
+</div>
+<div class="card"><h2>格局分布</h2>
+  <div class="stat"><span>正格</span><strong>${normal}</strong></div>
+  <div class="stat"><span>专旺格</span><strong>${zhwang}</strong></div>
+  <div class="stat"><span>从格</span><strong>${cong}</strong></div>
+  <div class="stat"><span>食神制杀</span><strong>${shizhi}</strong></div>
+</div>
+<div class="card"><h2>身强/弱</h2>
+  ${['身强','身弱'].map(s=>'<div class="bar-row"><span class="bar-label">'+s+'</span><div class="bar-track"><div class="bar-fill" style="width:'+((strMap[s]||0)/total*100).toFixed(0)+'%;background:'+(s==='身强'?'#c9a96e':'#888')+'"></div></div><span>'+(strMap[s]||0)+'</span></div>').join('')}
+</div>
+<div class="card"><h2>等级分布</h2>
+  ${['B','C','D'].map(g=>'<div class="bar-row"><span class="bar-label">'+g+'级</span><div class="bar-track"><div class="bar-fill" style="width:'+((gradesMap[g]||0)/total*100).toFixed(0)+'%;background:'+(g==='B'?'#c9a96e':g==='C'?'#888':'#ccc')+'"></div></div><span>'+(gradesMap[g]||0)+'</span></div>').join('')}
+</div>
+</div></body></html>`);
+});
+
 const PORT = process.env.PORT || 3100;
 
 app.get('/', (req, res) => {
