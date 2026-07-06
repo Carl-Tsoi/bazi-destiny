@@ -118,32 +118,15 @@ function classifyStrength(ratio: number): StrengthLevel {
 export function determineFavorability(
   star: TenGodStar,
   starElement: string,
-  dayStrength: string,
-  pattern: string,
+  _dayStrength: string,
+  _pattern: string,
   jiShen: string[],
 ): { favorable: boolean; reason: string } {
-  // 优先级1: L4 的 jiShen 列表已经综合了所有分析
+  // L4 已综合身强/弱+格局+调候+变格，L5a 直接使用，不做二次判断
   if (jiShen.includes(starElement)) {
     return { favorable: false, reason: `${starElement}在忌神列表(L4综合判断)` };
   }
-
-  // 优先级2: 基本原理验证
-  const isStrong = dayStrength.includes('强') || dayStrength.includes('旺');
-  const isWeak = dayStrength.includes('弱');
-
-  // 身强: 克泄耗为喜
-  const strongFavor: TenGodStar[] = ['officials', 'output', 'wealth'];
-  // 身弱: 生扶为喜
-  const weakFavor: TenGodStar[] = ['seals', 'peers'];
-
-  if (isStrong && !strongFavor.includes(star)) {
-    return { favorable: false, reason: `身强，${starElement}(生扶)为忌` };
-  }
-  if (isWeak && !weakFavor.includes(star)) {
-    return { favorable: false, reason: `身弱，${starElement}(克泄耗)为忌` };
-  }
-
-  return { favorable: true, reason: `${starElement}为喜用` };
+  return { favorable: true, reason: `${starElement}为喜用(L4综合判断)` };
 }
 
 // ── 星力品质评估 ─────────────────────────────────
