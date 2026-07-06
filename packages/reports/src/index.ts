@@ -171,8 +171,6 @@ export function generateReport(input: ReportInput): string {
   return lines.join('\n');
 }
 
-export { generateNarratives } from './narrative.js';
-export type { NarrativeInput } from './narrative.js';
 
 /** Export as text (alias for generateReport, same format) */
 export { generateReport as generateText };

@@ -8,8 +8,6 @@
 import type { BaziChart } from '@bazi-destiny/core';
 import { determineYongShen, judgeDayun, analyzeInteractions, checkElementFlow, CLIMATE_COEFF } from '@bazi-destiny/knowledge-base';
 import type { YongShenResult } from '@bazi-destiny/knowledge-base';
-import { generateNarratives } from '@bazi-destiny/reports';
-
 export { generateScoringReport } from './report-scoring.js';
 
 // ── 工具函数 ────────────────────────────────────
