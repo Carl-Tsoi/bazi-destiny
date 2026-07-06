@@ -143,7 +143,7 @@ app.get('/', (req, res) => {
   const withReport = db.prepare('SELECT COUNT(DISTINCT subject_id) as c FROM l6_reports').get().c;
   const subjects = db.prepare("SELECT s.id, s.name, s.gender, s.datetime, l2.day_gan, l2.day_zhi, l2.pattern, l4.yong_shen, l5.grade FROM subjects s LEFT JOIN l2_charts l2 ON s.id=l2.subject_id LEFT JOIN l4_analyses l4 ON s.id=l4.subject_id LEFT JOIN l5_specialties l5 ON s.id=l5.subject_id ORDER BY s.id DESC").all();
   db.close();
-  const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td></tr>`).join('');
+  const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td><td><button onclick="genReport(${s.id},this)" style="padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">生成报告</button></td></tr>`).join('');
   res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>八字命理</title>
 <style>body{font-family:'PingFang SC',sans-serif;background:#f5f0eb;color:#333;margin:0;padding:20px}
 h1{color:#8b6914;text-align:center} .bar{text-align:center;color:#999;margin-bottom:20px}
@@ -165,16 +165,23 @@ form button{padding:12px;background:#8b6914;color:#fff;border:none;border-radius
 </div>
 <div class="btns"><a href="/new">+ 新增命例</a></div>
 <script>
+function genReport(id,btn){
+  btn.textContent='生成中...'; btn.disabled=true;
+  fetch('/api/subjects/'+id+'/calculate',{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(d.success){ btn.textContent='✅ 完成'; btn.style.background='#4a8'; setTimeout(()=>{btn.textContent='生成报告'; btn.style.background='#8b6914'; btn.disabled=false},2000); }
+    else { btn.textContent='❌ 失败'; btn.disabled=false; }
+  }).catch(()=>{ btn.textContent='❌ 失败'; btn.disabled=false; });
+}
 function search(){
   const q=document.getElementById('search').value;
   fetch('/api/subjects?q='+encodeURIComponent(q)).then(r=>r.json()).then(data=>{
     const tbody=document.querySelector('tbody');
-    tbody.innerHTML=data.map(s=>'<tr><td><a href=\"/report/'+s.id+'\">'+(s.name||'-')+'</a></td><td>'+(s.gender==='M'?'男':'女')+'</td><td>'+(s.datetime||'').replace('T',' ')+'</td><td>'+(s.dayGan||'')+(s.dayZhi||'')+'</td><td>'+(s.pattern||'')+'</td><td>'+(s.yongShen||'')+'</td><td>'+(s.grade||'')+'</td></tr>').join('');
+    tbody.innerHTML=data.map(s=>'<tr><td><a href=\"/report/'+s.id+'\">'+(s.name||'-')+'</a></td><td>'+(s.gender==='M'?'男':'女')+'</td><td>'+(s.datetime||'').replace('T',' ')+'</td><td>'+(s.dayGan||'')+(s.dayZhi||'')+'</td><td>'+(s.pattern||'')+'</td><td>'+(s.yongShen||'')+'</td><td>'+(s.grade||'')+'</td><td><button onclick=\"genReport('+s.id+',this)\" style=\"padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px\">生成报告</button></td></tr>').join('');
     document.querySelector('.bar').textContent='搜索结果: '+data.length+' 条';
   });
 }
 </script>
-<table><thead><tr><th>姓名</th><th>性别</th><th>出生</th><th>日柱</th><th>格局</th><th>用神</th><th>等级</th></tr></thead><tbody>${rows}</tbody></table>
+<table><thead><tr><th>姓名</th><th>性别</th><th>出生</th><th>日柱</th><th>格局</th><th>用神</th><th>等级</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>
 </body></html>`);
 });
 
