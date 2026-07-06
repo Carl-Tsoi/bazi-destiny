@@ -28,6 +28,7 @@ import { yuanhaiEngine } from '../engines/yuanhai.js';
 import { sanmingEngine } from '../engines/sanming.js';
 import { zhuangwangEngine, getZhuangWangXi, getZhuangWangJi } from '../engines/biange-zhuangwang.js';
 import { congGeEngine, getCongXi, getCongJi } from '../engines/biange-cong.js';
+import { shishangZhishaEngine, getShiZhiXi, getShiZhiJi } from '../engines/biange-shishang-zhisha.js';
 import type { LayeredContext } from '../engines/types.js';
 
 const WUXING: Record<string, string> = {
@@ -83,7 +84,7 @@ export async function determineYongShen(
   };
 
   // 分层执行引擎：先变格（极旺/极弱），后正格（六书）
-  for (const engine of [zhuangwangEngine, congGeEngine, zipingEngine, ditiansuiEngine, qiongtongEngine, shenfengEngine, yuanhaiEngine, sanmingEngine]) {
+  for (const engine of [zhuangwangEngine, congGeEngine, shishangZhishaEngine, zipingEngine, ditiansuiEngine, qiongtongEngine, shenfengEngine, yuanhaiEngine, sanmingEngine]) {
     const result = engine(ctx);
     ctx.engineResults.push(result);
     if (result.specialPattern) break; // 变格命中中断后续引擎
@@ -93,7 +94,7 @@ export async function determineYongShen(
   let finalYongShen = fuyi.yongShen;
   let isBianGe = false;
   for (const r of ctx.engineResults) {
-    if (r.yongShen) { finalYongShen = r.yongShen; isBianGe = r.engine === '专旺格' || r.engine === '从格'; break; }
+    if (r.yongShen) { finalYongShen = r.yongShen; isBianGe = r.engine === '专旺格' || r.engine === '从格' || r.engine === '食神制杀'; break; }
   }
 
   // 喜忌：变格用自己的喜忌规则，正格用扶抑规则
@@ -113,6 +114,9 @@ export async function determineYongShen(
       else if (diag.includes('从势')) congType = 'wealth'; // 从势暂用从财
       xiShen = [...getCongXi(dayEl, congType)];
       jiShen = [...getCongJi(dayEl, congType)];
+    } else if (winner.engine === '食神制杀') {
+      xiShen = [...getShiZhiXi(dayEl)];
+      jiShen = [...getShiZhiJi(dayEl)];
     } else {
       xiShen = [...getBaseXi(fuyi.dayStrength, dayEl, dayIdx)];
       jiShen = [...getBaseJi(fuyi.dayStrength, dayEl, dayIdx)];
