@@ -8,7 +8,7 @@
  *   bazi-destiny "1990-01-15 14:30" --lat 39.9 --lon 116.4 --gender M --debug
  */
 import { Command } from 'commander';
-import { BirthInfoSchema, initDatabase } from '@bazi-destiny/core';
+import { BirthInfoSchema, initDatabase, upsertSubject, writeL2Chart, writeL3Score, writeL4Analysis, writeL5Specialty, writeL6Report, importCasesJson } from '@bazi-destiny/core';
 import { BaziEngine } from '@bazi-destiny/engine-bazi';
 import { renderBazi } from './ascii.js';
 import { runSensitivity } from './sensitivity.js';
@@ -125,27 +125,39 @@ program
         };
         const age = new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear();
         const score = scoreChart(chart);
-        // 保存L3结果
-        if (options.name) {
-          const layerDir = `output/${options.name}/layers`;
-          fs.mkdirSync(layerDir, { recursive: true });
-          fs.writeFileSync(`${layerDir}/L3-score.json`, JSON.stringify(score, null, 2));
-        }
-        const analysis = await analyzeChart(chart, score, { age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(), gender: birthInfo.gender as 'M' | 'F',
-        });
-        // 注入 L3+L4 结果（兼容旧报告接口）
-        /*** Save L4 result */ if (options.name) { fs.writeFileSync(`output/${options.name}/layers/L4-analysis.json`, JSON.stringify(analysis, null, 2)); }
+        const analysis = await analyzeChart(chart, score, { age, gender: birthInfo.gender as 'M' | 'F' });
         Object.assign(bazi, {
           yongShen: analysis.yongShen,
           dayStrength: score.dayStrength,
           final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
         });
-        /*** Save L3 score to file */ if (options.name) { fs.writeFileSync(`output/${options.name}/layers/L3-score.json`, JSON.stringify(score, null, 2)); }
         // L5: 专项分析（11维规则引擎）
         const specialty = analyzeAllDimensions(chart, score, analysis, {
           gender: birthInfo.gender as 'M' | 'F',
-          age: new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear(),
+          age,
         });
+
+        // ── DB 持久化: L2→L3→L4→L5 ──
+        if (options.name) {
+          const subjectId = upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
+          writeL2Chart(db, subjectId, {
+            pattern: bazi.pattern as string || '', startAge: (bazi.dayun as any).startAgeYears || 0, direction: (bazi.dayun as any).direction || 'forward',
+            dayGan: chart.dayGan, dayZhi: chart.dayZhi, monthZhi: chart.monthZhi,
+            pillarsJson: JSON.stringify(bazi.pillars), dayunJson: JSON.stringify(bazi.dayun), shenshaJson: JSON.stringify(bazi.shensha || {}),
+          });
+          writeL3Score(db, subjectId, {
+            dayStrength: score.dayStrength, dayScore: score.dayScore, ziDang: score.ziDang, yiDang: score.yiDang,
+            elementScoresJson: JSON.stringify(score.elementScores), detailsJson: JSON.stringify(score.details), climateVersion: score.climateVersion,
+          });
+          writeL4Analysis(db, subjectId, {
+            yongShen: analysis.yongShen, xiShenJson: JSON.stringify(analysis.xiShen), jiShenJson: JSON.stringify(analysis.jiShen),
+            enginesJson: JSON.stringify(analysis.engines), patternType: chart.pattern, dayStrength: score.dayStrength,
+            tiaohouJson: JSON.stringify(analysis.tiaohou), fuyiJson: JSON.stringify(analysis.fuyi),
+          });
+          writeL5Specialty(db, subjectId, {
+            dimensionsJson: JSON.stringify(specialty.dimensions), grade: specialty.rating.grade, summary: specialty.rating.summary,
+          });
+        }
 
         // L5b: AI 分析（--ai 时并行调用3次API）
         let aiResult: any;
@@ -180,7 +192,6 @@ program
         }
 
         // 预计算结果（类型安全），传给报告生成器避免重复计算
-        /*** Save L5 result */ if (options.name) { fs.writeFileSync(`output/${options.name}/layers/L5-specialty.json`, JSON.stringify(specialty, null, 2)); }
         precomputed = {
           aiResult,
           specialty,
@@ -283,6 +294,11 @@ program
           name: options.name as string || '',
           skipAi: !(options.ai as boolean),
         }, precomputed!);
+        // L6 报告写入 DB
+        if (options.name) {
+          const sid = upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
+          writeL6Report(db, sid, 'md', baziReport);
+        }
         if (options.output) {
           const name = options.name as string || 'report';
           const reportDir = `output/${name}`;
@@ -361,57 +377,9 @@ program
         }
       }
 
-      // Save to case registry if --name provided
+      // Save to case registry (DB) if --name provided
       if (options.name) {
-        const casesPath = 'data/cases.json';
-        const casesFile = fs.existsSync(casesPath) ? JSON.parse(fs.readFileSync(casesPath, 'utf-8')) : [];
-        // Deduplicate: update existing or add new
-        const key = `${options.name}|${datetime.replace('T', ' ')}|${options.gender}`;
-        const existingIdx = casesFile.findIndex((c: Record<string,string>) =>
-          `${c.name}|${c.birth}|${c.gender}` === key);
-        const entry = {
-          name: options.name as string,
-          gender: options.gender,
-          birth: datetime.replace('T', ' '),
-        };
-        if (existingIdx >= 0) casesFile[existingIdx] = entry;
-        else casesFile.push(entry);
-        fs.mkdirSync(dirname(casesPath), { recursive: true });
-        fs.writeFileSync(casesPath, JSON.stringify(casesFile, null, 2), 'utf-8');
-      }
-
-      // Save system determination to data/<name>/
-      if (options.name && outputs.bazi) {
-        const baziData = outputs.bazi as Record<string, unknown>;
-        const sysDir = `data/${options.name}`;
-        fs.mkdirSync(sysDir, { recursive: true });
-        const pillars = baziData.pillars as Record<string, unknown> | undefined;
-        const dayun = baziData.dayun as Record<string, unknown> | undefined;
-        fs.writeFileSync(`${sysDir}/system-result.json`, JSON.stringify({
-          name: options.name,
-          birth: datetime.replace('T', ' '),
-          gender: options.gender,
-          yongShen: baziData.yongShen,
-          final: baziData.final,
-          dayStrength: baziData.dayStrength,
-          pattern: baziData.pattern,
-          // 四柱精简: 只存干支十神，不含纳音
-          pillars: pillars ? {
-            年柱: { gan: (pillars.年柱 as Record<string,unknown>)?.gan, zhi: (pillars.年柱 as Record<string,unknown>)?.zhi, shishen: (pillars.年柱 as Record<string,unknown>)?.shishen, canggan: (pillars.年柱 as Record<string,unknown>)?.canggan },
-            月柱: { gan: (pillars.月柱 as Record<string,unknown>)?.gan, zhi: (pillars.月柱 as Record<string,unknown>)?.zhi, shishen: (pillars.月柱 as Record<string,unknown>)?.shishen, canggan: (pillars.月柱 as Record<string,unknown>)?.canggan },
-            日柱: { gan: (pillars.日柱 as Record<string,unknown>)?.gan, zhi: (pillars.日柱 as Record<string,unknown>)?.zhi, shishen: (pillars.日柱 as Record<string,unknown>)?.shishen, canggan: (pillars.日柱 as Record<string,unknown>)?.canggan },
-            时柱: { gan: (pillars.时柱 as Record<string,unknown>)?.gan, zhi: (pillars.时柱 as Record<string,unknown>)?.zhi, shishen: (pillars.时柱 as Record<string,unknown>)?.shishen, canggan: (pillars.时柱 as Record<string,unknown>)?.canggan },
-          } : undefined,
-          dayun: dayun ? {
-            startAgeYears: dayun.startAgeYears,
-            direction: dayun.direction,
-            steps: (dayun.steps as Array<Record<string,unknown>>)?.map(s => ({
-              startAge: s.startAge, endAge: s.endAge,
-              gan: s.gan, zhi: s.zhi,
-              ganShishen: s.ganShishen, zhiShishen: s.zhiShishen,
-            })),
-          } : undefined,
-        }, null, 2), 'utf-8');
+        upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
       }
 
       db.close();
