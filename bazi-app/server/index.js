@@ -76,6 +76,15 @@ app.get('/api/subjects/:id/report', (req, res) => {
   res.type('text/markdown').send(row.content);
 });
 
+app.delete('/api/subjects/:id', (req, res) => {
+  const db = getDb();
+  const s = db.prepare('SELECT name FROM subjects WHERE id=?').get(req.params.id);
+  if (!s) { db.close(); return res.status(404).json({ error: 'Not found' }); }
+  db.prepare('DELETE FROM subjects WHERE id=?').run(req.params.id);
+  db.close();
+  res.json({ success: true, name: s.name });
+});
+
 app.get('/api/stats', (req, res) => {
   const db = getDb();
   const total = db.prepare('SELECT COUNT(*) as c FROM subjects').get().c;
@@ -145,7 +154,7 @@ app.get('/', (req, res) => {
   const withReport = db.prepare('SELECT COUNT(DISTINCT subject_id) as c FROM l6_reports').get().c;
   const subjects = db.prepare("SELECT s.id, s.name, s.gender, s.datetime, l2.day_gan, l2.day_zhi, l2.pattern, l4.yong_shen, l5.grade FROM subjects s LEFT JOIN l2_charts l2 ON s.id=l2.subject_id LEFT JOIN l4_analyses l4 ON s.id=l4.subject_id LEFT JOIN l5_specialties l5 ON s.id=l5.subject_id ORDER BY s.id DESC").all();
   db.close();
-  const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td><td><label style="font-size:12px;color:#888;margin-right:4px"><input type="checkbox" class="ai-ck" id="ai${s.id}">AI</label><button onclick="genReport(${s.id},this)" style="padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">生成报告</button></td></tr>`).join('');
+  const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td><td><label style="font-size:12px;color:#888;margin-right:4px"><input type="checkbox" class="ai-ck" id="ai${s.id}">AI</label><button onclick="genReport(${s.id},this)" style="padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">生成</button><button onclick="delSubject(${s.id},this)" style="padding:6px 10px;background:#c44;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;margin-left:4px">删除</button></td></tr>`).join('');
   res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>八字命理</title>
 <style>body{font-family:'PingFang SC',sans-serif;background:#f5f0eb;color:#333;margin:0;padding:20px}
 h1{color:#8b6914;text-align:center} .bar{text-align:center;color:#999;margin-bottom:20px}
@@ -167,6 +176,14 @@ form button{padding:12px;background:#8b6914;color:#fff;border:none;border-radius
 </div>
 <div class="btns"><a href="/new">+ 新增命例</a></div>
 <script>
+function delSubject(id,btn){
+  if(!confirm('确定删除此命例及其所有数据？')) return;
+  btn.textContent='删除中...'; btn.disabled=true;
+  fetch('/api/subjects/'+id,{method:'DELETE'}).then(r=>r.json()).then(d=>{
+    if(d.success){ btn.closest('tr').remove(); }
+    else { btn.textContent='失败'; btn.disabled=false; }
+  }).catch(()=>{ btn.textContent='失败'; btn.disabled=false; });
+}
 function genReport(id,btn){
   const aiCk=document.getElementById('ai'+id);
   const useAi=aiCk ? aiCk.checked : false;
@@ -180,7 +197,7 @@ function search(){
   const q=document.getElementById('search').value;
   fetch('/api/subjects?q='+encodeURIComponent(q)).then(r=>r.json()).then(data=>{
     const tbody=document.querySelector('tbody');
-    tbody.innerHTML=data.map(s=>'<tr><td><a href=\"/report/'+s.id+'\">'+(s.name||'-')+'</a></td><td>'+(s.gender==='M'?'男':'女')+'</td><td>'+(s.datetime||'').replace('T',' ')+'</td><td>'+(s.dayGan||'')+(s.dayZhi||'')+'</td><td>'+(s.pattern||'')+'</td><td>'+(s.yongShen||'')+'</td><td>'+(s.grade||'')+'</td><td><label style=\"font-size:12px;color:#888;margin-right:4px\"><input type=\"checkbox\" class=\"ai-ck\" id=\"ai'+s.id+'\">AI</label><button onclick=\"genReport('+s.id+',this)\" style=\"padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px\">生成报告</button></td></tr>').join('');
+    tbody.innerHTML=data.map(s=>'<tr><td><a href=\"/report/'+s.id+'\">'+(s.name||'-')+'</a></td><td>'+(s.gender==='M'?'男':'女')+'</td><td>'+(s.datetime||'').replace('T',' ')+'</td><td>'+(s.dayGan||'')+(s.dayZhi||'')+'</td><td>'+(s.pattern||'')+'</td><td>'+(s.yongShen||'')+'</td><td>'+(s.grade||'')+'</td><td><label style=\"font-size:12px;color:#888;margin-right:4px\"><input type=\"checkbox\" class=\"ai-ck\" id=\"ai'+s.id+'\">AI</label><button onclick=\"genReport('+s.id+',this)\" style=\"padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px\">生成</button><button onclick=\"delSubject('+s.id+',this)\" style=\"padding:6px 10px;background:#c44;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;margin-left:4px\">删除</button></td></tr>').join('');
     document.querySelector('.bar').textContent='搜索结果: '+data.length+' 条';
   });
 }
