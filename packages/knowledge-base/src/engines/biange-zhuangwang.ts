@@ -128,16 +128,18 @@ export function zhuangwangEngine(ctx: LayeredContext): EngineResult {
     return { engine: '专旺格', yongShen: null, yongShenType: '奇格', diagnostics: [`月令${monthZhi}不当旺(需${dayEl}月)，不入专旺格`], specialPattern: false };
   }
 
-  // ═══ 3. 地支成局: 三会/三合/半合/稼穑四库 ═══
+  // ═══ 3. 地支成势: 三会/三合/半合/稼穑四库/同五行≥3 ═══
   const allZhis = Object.values(ctx.base.pillars as Record<string, { zhi: string }>).map(p => p.zhi);
+  const sameElCount = allZhis.filter(z => ZHI_WX[z] === dayEl).length; // 地支同五行数量
   const hasHui = hasSanHui(allZhis, dayEl);
   const hasHe = hasSanHe(allZhis, dayEl);
   const hasBan = hasBanHe(allZhis, dayEl);
   const isJiaSe = dayEl === '土' && hasManyTus(allZhis);
-  if (!hasHui && !hasHe && !hasBan && !isJiaSe) {
+  const isQuasi = !hasHui && !hasHe && !hasBan && !isJiaSe && sameElCount >= 3; // 类专旺: 同五行≥3个
+  if (!hasHui && !hasHe && !hasBan && !isJiaSe && !isQuasi) {
     const req = dayEl === '土'
-      ? '需三会土/三合火/四库≥3'
-      : `需三会${SAN_HUI[dayEl]?.join('')}或三合${SAN_HE[dayEl]?.join('')}或半合`;
+      ? '需三会土/三合火/四库≥3/同五行地支≥3'
+      : `需三会${SAN_HUI[dayEl]?.join('')}或三合${SAN_HE[dayEl]?.join('')}或半合或同五行地支≥3`;
     return { engine: '专旺格', yongShen: null, yongShenType: '奇格', diagnostics: [`地支不成${dayEl}局(${req})，不入专旺格`], specialPattern: false };
   }
 
@@ -148,11 +150,11 @@ export function zhuangwangEngine(ctx: LayeredContext): EngineResult {
     return { engine: '专旺格', yongShen: null, yongShenType: '奇格', diagnostics: [`官杀${killerEl}得分${killerScore.toFixed(1)}>5%破格，不入专旺格`], specialPattern: false };
   }
 
-  // ═══ 5. 财星检查 → 降假专旺 ═══
+  // ═══ 5. 财星检查 → 降假专旺 / 类专旺也降假 ═══
   const wealthEl = ORDER[(di + 2) % 5];
   const wealthScore = scores[wealthEl] ?? 0;
   const hasWealth = wealthScore > total * 0.05;
-  const isFalse = hasWealth; // 有财星 → 假专旺
+  const isFalse = hasWealth || isQuasi; // 有财星 或 类专旺(非正统三合三会) → 假专旺
 
   // ═══ 入格 ═══
   const name = GE_NAMES[dayEl] || `专旺${dayEl}格`;
@@ -160,7 +162,7 @@ export function zhuangwangEngine(ctx: LayeredContext): EngineResult {
   const diagParts = [
     `专旺格:${name}${subLabel}`,
     `日主${dayEl}极旺(自党${(ziDangRatio*100).toFixed(0)}%)`,
-    isJiaSe ? '四库≥3成稼穑' : hasHui ? '三会局成立' : hasHe ? '三合局成立' : '半合局成立',
+    isJiaSe ? '四库≥3成稼穑' : hasHui ? '三会局成立' : hasHe ? '三合局成立' : hasBan ? '半合局成立' : `类专旺(同五行地支${sameElCount}个)` ,
     `月令${monthZhi}当旺`,
     `${killerEl}(${killerScore <= 0 ? '无' : '极弱'})官杀不破格`,
   ];
