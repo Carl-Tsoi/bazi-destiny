@@ -58,8 +58,10 @@ app.post('/api/subjects/:id/calculate', async (req, res) => {
   const db = getDb(); const s = db.prepare('SELECT * FROM subjects WHERE id=?').get(req.params.id); db.close();
   if (!s) return res.status(404).json({ error: 'Not found' });
   try {
-    const dt = (s.datetime||'').replace('T',' ');
-    const child = spawn('npx', ['tsx', CLI_PATH, dt, '--gender', s.gender, '--name', s.name, '--report'], { cwd: CLI_DIR, env: {...process.env}, timeout: 120000 });
+    const useAi = req.body?.ai === true || req.body?.ai === 'true';
+    const args = ['tsx', CLI_PATH, (s.datetime||'').replace('T',' '), '--gender', s.gender, '--name', s.name, '--report'];
+    if (useAi) args.push('--ai');
+    const child = spawn('npx', args, { cwd: CLI_DIR, env: {...process.env}, timeout: 180000 });
     let err=''; child.stderr.on('data',d=>err+=d);
     await new Promise((resolve,reject) => child.on('close',code=>code===0?resolve():reject(new Error(err||'CLI failed'))));
     res.json({ success: true });
@@ -143,7 +145,7 @@ app.get('/', (req, res) => {
   const withReport = db.prepare('SELECT COUNT(DISTINCT subject_id) as c FROM l6_reports').get().c;
   const subjects = db.prepare("SELECT s.id, s.name, s.gender, s.datetime, l2.day_gan, l2.day_zhi, l2.pattern, l4.yong_shen, l5.grade FROM subjects s LEFT JOIN l2_charts l2 ON s.id=l2.subject_id LEFT JOIN l4_analyses l4 ON s.id=l4.subject_id LEFT JOIN l5_specialties l5 ON s.id=l5.subject_id ORDER BY s.id DESC").all();
   db.close();
-  const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td><td><button onclick="genReport(${s.id},this)" style="padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">生成报告</button></td></tr>`).join('');
+  const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td><td><label style="font-size:12px;color:#888;margin-right:4px"><input type="checkbox" class="ai-ck" id="ai${s.id}">AI</label><button onclick="genReport(${s.id},this)" style="padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">生成报告</button></td></tr>`).join('');
   res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>八字命理</title>
 <style>body{font-family:'PingFang SC',sans-serif;background:#f5f0eb;color:#333;margin:0;padding:20px}
 h1{color:#8b6914;text-align:center} .bar{text-align:center;color:#999;margin-bottom:20px}
@@ -166,8 +168,10 @@ form button{padding:12px;background:#8b6914;color:#fff;border:none;border-radius
 <div class="btns"><a href="/new">+ 新增命例</a></div>
 <script>
 function genReport(id,btn){
-  btn.textContent='生成中...'; btn.disabled=true;
-  fetch('/api/subjects/'+id+'/calculate',{method:'POST'}).then(r=>r.json()).then(d=>{
+  const aiCk=document.getElementById('ai'+id);
+  const useAi=aiCk ? aiCk.checked : false;
+  btn.textContent=useAi?'AI生成中...':'生成中...'; btn.disabled=true;
+  fetch('/api/subjects/'+id+'/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ai:useAi})}).then(r=>r.json()).then(d=>{
     if(d.success){ btn.textContent='✅ 完成'; btn.style.background='#4a8'; setTimeout(()=>{btn.textContent='生成报告'; btn.style.background='#8b6914'; btn.disabled=false},2000); }
     else { btn.textContent='❌ 失败'; btn.disabled=false; }
   }).catch(()=>{ btn.textContent='❌ 失败'; btn.disabled=false; });
@@ -176,7 +180,7 @@ function search(){
   const q=document.getElementById('search').value;
   fetch('/api/subjects?q='+encodeURIComponent(q)).then(r=>r.json()).then(data=>{
     const tbody=document.querySelector('tbody');
-    tbody.innerHTML=data.map(s=>'<tr><td><a href=\"/report/'+s.id+'\">'+(s.name||'-')+'</a></td><td>'+(s.gender==='M'?'男':'女')+'</td><td>'+(s.datetime||'').replace('T',' ')+'</td><td>'+(s.dayGan||'')+(s.dayZhi||'')+'</td><td>'+(s.pattern||'')+'</td><td>'+(s.yongShen||'')+'</td><td>'+(s.grade||'')+'</td><td><button onclick=\"genReport('+s.id+',this)\" style=\"padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px\">生成报告</button></td></tr>').join('');
+    tbody.innerHTML=data.map(s=>'<tr><td><a href=\"/report/'+s.id+'\">'+(s.name||'-')+'</a></td><td>'+(s.gender==='M'?'男':'女')+'</td><td>'+(s.datetime||'').replace('T',' ')+'</td><td>'+(s.dayGan||'')+(s.dayZhi||'')+'</td><td>'+(s.pattern||'')+'</td><td>'+(s.yongShen||'')+'</td><td>'+(s.grade||'')+'</td><td><label style=\"font-size:12px;color:#888;margin-right:4px\"><input type=\"checkbox\" class=\"ai-ck\" id=\"ai'+s.id+'\">AI</label><button onclick=\"genReport('+s.id+',this)\" style=\"padding:6px 14px;background:#8b6914;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px\">生成报告</button></td></tr>').join('');
     document.querySelector('.bar').textContent='搜索结果: '+data.length+' 条';
   });
 }
