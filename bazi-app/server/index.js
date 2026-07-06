@@ -2,6 +2,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
 const { spawn } = require('child_process');
+const { marked } = require('marked');
 const app = express();
 app.use(express.json());
 
@@ -145,15 +146,21 @@ app.get('/report/:id', (req, res) => {
   const l6 = db.prepare("SELECT content FROM l6_reports WHERE subject_id=? AND format='md' ORDER BY generated_at DESC LIMIT 1").get(req.params.id);
   db.close();
   if (!s) return res.status(404).send('Not found');
-  const md = l6 ? l6.content.replace(/<span /g,'<span ').replace(/\n/g,'<br>') : '(暂无报告，请先生成)';
-  res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${s.name} · 八字报告</title>
+  const html = l6 ? marked.parse(l6.content) : '<p>(暂无报告，请先生成)</p>';
+  res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${s.name} · 八字报告</title>
 <style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px;line-height:1.8}
-h1{color:#c9a96e}a{color:#c9a96e}.nav{margin-bottom:16px}
-.report{background:#1a1a2e;padding:24px;border-radius:12px}
+.nav{margin-bottom:16px}a{color:#c9a96e}h1,h2,h3{color:#c9a96e}h2{border-bottom:1px solid #2a2a3e;padding-bottom:8px;margin-top:32px}
+table{width:100%;border-collapse:collapse;margin:16px 0;background:#1a1a2e;border-radius:8px;overflow:hidden}
+th{background:#2a2a3e;color:#c9a96e;padding:10px 14px;text-align:left;font-size:14px}
+td{padding:10px 14px;border-bottom:1px solid #2a2a3e;font-size:14px}
+blockquote{background:rgba(201,169,110,.1);border-left:3px solid #c9a96e;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0}
+code{background:#2a2a3e;padding:2px 6px;border-radius:4px;font-size:13px}
+pre{background:#0f0f1a;padding:16px;border-radius:8px;overflow-x:auto}
+hr{border:none;border-top:1px solid #2a2a3e;margin:24px 0}
+details{margin:12px 0}summary{color:#c9a96e;cursor:pointer}
 </style></head><body>
-<div class="nav"><a href="/">← 返回列表</a></div>
-<h1>${s.name} · ${s.gender==='M'?'男':'女'} · ${(s.datetime||'').replace('T',' ')}</h1>
-<div class="report">${md}</div>
+<div class="nav"><a href="/">← 返回列表</a> | <a href="/api/subjects/${s.id}/report">查看原始MD</a></div>
+<div class="report">${html}</div>
 </body></html>`);
 });
 
