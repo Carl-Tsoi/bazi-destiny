@@ -127,6 +127,51 @@ function checkRestrained(p: { gan: string; zhi: string }, _pillars: any, _dayEl:
   return KE[zhiEl] === ganEl; // 地支克天干（截脚）
 }
 
+/** 检测日主的印比根是否全部被六冲或合化摧毁 */
+function areAllRootsDestroyed(pillars: Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>, dayEl: string): boolean {
+  const CHONG: Record<string, string> = {
+    '子': '午', '午': '子', '丑': '未', '未': '丑',
+    '寅': '申', '申': '寅', '卯': '酉', '酉': '卯',
+    '辰': '戌', '戌': '辰', '巳': '亥', '亥': '巳',
+  };
+  const sealEl = getEl(dayEl, 4);
+  const peerEl = dayEl;
+  const allZhis = Object.values(pillars).map(p => p.zhi);
+
+  // 收集所有印比地支
+  const supportZhis: string[] = [];
+  for (const p of Object.values(pillars)) {
+    if (p.shishen === '日主') continue;
+    const zhiEl = ZHI_WX[p.zhi] ?? '';
+    if (zhiEl === peerEl || zhiEl === sealEl) {
+      supportZhis.push(p.zhi);
+    }
+  }
+
+  // 如果没有地支根（只有藏干根），检查藏干根是否被冲
+  if (supportZhis.length === 0) {
+    // 检查藏干所在的柱是否被冲
+    for (const p of Object.values(pillars)) {
+      if (p.shishen === '日主') continue;
+      for (const h of p.canggan) {
+        if (GAN_WX[h.stem] === peerEl || GAN_WX[h.stem] === sealEl) {
+          // 藏干所在柱的地支被冲 → 根被破坏
+          const chongZhi = CHONG[p.zhi];
+          if (chongZhi && allZhis.includes(chongZhi)) return true;
+          return false; // 有未受冲的藏干根
+        }
+      }
+    }
+    return false;
+  }
+
+  // 每个地支根都被冲才视为全部摧毁
+  return supportZhis.every(z => {
+    const chongZhi = CHONG[z];
+    return chongZhi && allZhis.includes(chongZhi);
+  });
+}
+
 // ── 喜忌 ─────────────────────────────────────
 
 const CONG_XI_MAP: Record<string, (dayEl: string) => string[]> = {
@@ -167,9 +212,13 @@ export function congGeEngine(ctx: LayeredContext): EngineResult {
   const pillars = ctx.base.pillars as Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>;
   const rootLevel = checkDaySupport(pillars, dayEl);
   let forcedFalse = false; // 降为假从（不拒绝）
-  // 强根→拒绝 / 弱根→假从 / 无根→真从
+  // 强根→检查是否被冲散 / 弱根→假从 / 无根→真从
   if (rootLevel === 'strong') {
-    return { engine: '从格', yongShen: null, yongShenType: '奇格', diagnostics: ['日主有强根(地支印比或主气藏干)，不入从格'], specialPattern: false };
+    const rootsDestroyed = areAllRootsDestroyed(pillars, dayEl);
+    if (!rootsDestroyed) {
+      return { engine: '从格', yongShen: null, yongShenType: '奇格', diagnostics: ['日主有强根(地支印比或主气藏干)，不入从格'], specialPattern: false };
+    }
+    forcedFalse = true; // 根被冲散/合化 → 降假从
   }
   if (rootLevel === 'weak' || rootLevel === 'trace') {
     forcedFalse = true; // 中气/余气弱根 → 降假从
