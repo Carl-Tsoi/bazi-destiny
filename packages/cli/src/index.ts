@@ -8,7 +8,7 @@
  *   bazi-destiny "1990-01-15 14:30" --lat 39.9 --lon 116.4 --gender M --debug
  */
 import { Command } from 'commander';
-import { BirthInfoSchema, initDatabase, upsertSubject, writeL2Chart, writeL3Score, writeL4Analysis, writeL5Specialty, writeL6Report, importCasesJson } from '@bazi-destiny/core';
+import { BirthInfoSchema, initDatabase, upsertSubject, getL2Chart, getL3Score, getL4Analysis, writeL2Chart, writeL3Score, writeL4Analysis, writeL5Specialty, writeL6Report } from '@bazi-destiny/core';
 import { BaziEngine } from '@bazi-destiny/engine-bazi';
 import { renderBazi } from './ascii.js';
 import { runSensitivity } from './sensitivity.js';
@@ -64,8 +64,9 @@ program
       ];
 
       const fs = await import('fs');
-      // Initialize database
-      const dbPath = join(process.cwd(), 'bazi-destiny.db');
+      // Initialize database — DB at bazi-destiny/ project root
+      const projectRoot = join(import.meta.dirname, '..', '..', '..');
+      const dbPath = join(projectRoot, 'bazi-destiny.db');
       const db = initDatabase(dbPath);
 
       // Run engines in parallel
@@ -109,10 +110,18 @@ program
         }
       }
 
-      // ═══ L3+L4+L5: 计分 + 分析 + 专项（编排器统一执行） ═══
+      // ═══ L1→L2→L3→L4→L5: 逐层计算，每层从DB读输入、写输出 ═══
+      const age = new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear();
       let precomputed: PrecomputedData | undefined;
       if (outputs.bazi) {
         const bazi = outputs.bazi as Record<string, unknown>;
+
+        // ── L1: 命主注册 ──
+        const subjectId = options.name
+          ? upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' })
+          : 0;
+
+        // ── L2: 排盘 → DB ──
         const chart: ChartResult = {
           pillars: bazi.pillars as ChartResult['pillars'],
           dayun: bazi.dayun as ChartResult['dayun'],
@@ -122,92 +131,80 @@ program
           dayZhi: (bazi.pillars as Record<string, {zhi: string}>).日柱?.zhi ?? '',
           monthZhi: (bazi.pillars as Record<string, {zhi: string}>).月柱?.zhi ?? '',
         };
-        const age = new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear();
-        const score = scoreChart(chart);
-        const analysis = await analyzeChart(chart, score, { age, gender: birthInfo.gender as 'M' | 'F' });
-        Object.assign(bazi, {
-          yongShen: analysis.yongShen,
-          dayStrength: score.dayStrength,
-          final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
-        });
-        // L5: 专项分析（11维规则引擎）
-        const specialty = analyzeAllDimensions(chart, score, analysis, {
-          gender: birthInfo.gender as 'M' | 'F',
-          age,
+        if (subjectId) writeL2Chart(db, subjectId, {
+          pattern: chart.pattern, startAge: bazi.dayun ? (bazi.dayun as any).startAgeYears : 0, direction: bazi.dayun ? (bazi.dayun as any).direction : 'forward',
+          dayGan: chart.dayGan, dayZhi: chart.dayZhi, monthZhi: chart.monthZhi,
+          pillarsJson: JSON.stringify(chart.pillars), dayunJson: JSON.stringify(chart.dayun), shenshaJson: JSON.stringify(chart.shensha),
         });
 
-        // ── DB 持久化: L2→L3→L4→L5 ──
-        if (options.name) {
-          const subjectId = upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
-          writeL2Chart(db, subjectId, {
-            pattern: bazi.pattern as string || '', startAge: (bazi.dayun as any).startAgeYears || 0, direction: (bazi.dayun as any).direction || 'forward',
-            dayGan: chart.dayGan, dayZhi: chart.dayZhi, monthZhi: chart.monthZhi,
-            pillarsJson: JSON.stringify(bazi.pillars), dayunJson: JSON.stringify(bazi.dayun), shenshaJson: JSON.stringify(bazi.shensha || {}),
-          });
-          writeL3Score(db, subjectId, {
-            dayStrength: score.dayStrength, dayScore: score.dayScore, ziDang: score.ziDang, yiDang: score.yiDang,
-            elementScoresJson: JSON.stringify(score.elementScores), detailsJson: JSON.stringify(score.details), climateVersion: score.climateVersion,
-          });
-          writeL4Analysis(db, subjectId, {
-            yongShen: analysis.yongShen, xiShenJson: JSON.stringify(analysis.xiShen), jiShenJson: JSON.stringify(analysis.jiShen),
-            enginesJson: JSON.stringify(analysis.engines), patternType: chart.pattern, dayStrength: score.dayStrength,
-            tiaohouJson: JSON.stringify(analysis.tiaohou), fuyiJson: JSON.stringify(analysis.fuyi),
-          });
-          writeL5Specialty(db, subjectId, {
-            dimensionsJson: JSON.stringify(specialty.dimensions), grade: specialty.rating.grade, summary: specialty.rating.summary,
-          });
-        }
+        // ── L3: 计分（从L2读pillars）→ DB ──
+        const l2Row = subjectId ? getL2Chart(db, subjectId) : null;
+        const scorePillars = l2Row ? JSON.parse(l2Row.pillars_json as string) : chart.pillars;
+        const scoreChart_data: ChartResult = { ...chart, pillars: scorePillars };
+        const score = scoreChart(scoreChart_data);
+        if (subjectId) writeL3Score(db, subjectId, {
+          dayStrength: score.dayStrength, dayScore: score.dayScore, ziDang: score.ziDang, yiDang: score.yiDang,
+          elementScoresJson: JSON.stringify(score.elementScores), detailsJson: JSON.stringify(score.details), climateVersion: score.climateVersion,
+        });
 
-        // L5b: AI 分析（--ai 时并行调用3次API）
+        // ── L4: 用神分析（从L3读分数）→ DB ──
+        const l3Row = subjectId ? getL3Score(db, subjectId) : null;
+        const l3Score = l3Row ? {
+          elementScores: JSON.parse(l3Row.element_scores_json as string),
+          dayScore: l3Row.day_score as number,
+          dayStrength: l3Row.day_strength as string,
+          ziDang: l3Row.zi_dang as number, yiDang: l3Row.yi_dang as number,
+          details: JSON.parse(l3Row.details_json as string),
+          climateVersion: l3Row.climate_version as number,
+        } : score;
+        const analysis = await analyzeChart(chart, l3Score, { age, gender: birthInfo.gender as 'M' | 'F' });
+        if (subjectId) writeL4Analysis(db, subjectId, {
+          yongShen: analysis.yongShen, xiShenJson: JSON.stringify(analysis.xiShen), jiShenJson: JSON.stringify(analysis.jiShen),
+          enginesJson: JSON.stringify(analysis.engines), patternType: chart.pattern, dayStrength: score.dayStrength,
+          tiaohouJson: JSON.stringify(analysis.tiaohou), fuyiJson: JSON.stringify(analysis.fuyi),
+        });
+
+        // ── L5: 专项分析（从L4读分析结果）→ DB ──
+        const l4Row = subjectId ? getL4Analysis(db, subjectId) : null;
+        const l4Input = l4Row ? {
+          yongShen: l4Row.yong_shen as string,
+          xiShen: JSON.parse(l4Row.xi_shen_json as string),
+          jiShen: JSON.parse(l4Row.ji_shen_json as string),
+          engines: JSON.parse(l4Row.engines_json as string),
+          tiaohou: JSON.parse(l4Row.tiaohou_json as string),
+          fuyi: JSON.parse(l4Row.fuyi_json as string),
+        } : analysis;
+        const specialty = analyzeAllDimensions(chart, score, analysis, { gender: birthInfo.gender as 'M' | 'F', age });
+        if (subjectId) writeL5Specialty(db, subjectId, {
+          dimensionsJson: JSON.stringify(specialty.dimensions), grade: specialty.rating.grade, summary: specialty.rating.summary,
+        });
+
+        // ── L5b: AI 分析 ──
         let aiResult: any;
-        const calcAge = new Date().getFullYear() - new Date(birthInfo.datetime).getFullYear();
         if (options.ai) {
           const currentYear = new Date().getFullYear();
           const tianGan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
           const diZhi = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
           const liunianGan = tianGan[(currentYear - 4) % 10];
           const liunianZhi = diZhi[(currentYear - 4) % 12];
-          const curDayun = analysis.dayunJudgments.find((d: any) => d.step.startAge <= calcAge && d.step.endAge >= calcAge);
-          const nextDayun = analysis.dayunJudgments.find((d: any) => d.step.startAge > calcAge);
-          const specialtySummary = specialty.dimensions
-            .filter((d: any) => d.items.length > 0)
-            .map((d: any) => d.dimension + ': ' + (d.items[0]?.layer1 || '')).join('; ');
-
+          const curDayun = analysis.dayunJudgments.find((d: any) => d.step.startAge <= age && d.step.endAge >= age);
+          const nextDayun = analysis.dayunJudgments.find((d: any) => d.step.startAge > age);
+          const specialtySummary = specialty.dimensions.filter((d: any) => d.items.length > 0).map((d: any) => d.dimension + ': ' + (d.items[0]?.layer1 || '')).join('; ');
           aiResult = await generateAiAnalyses({
-            chartData: JSON.stringify(chart.pillars),
-            scoreData: '自党' + score.ziDang + ' 异党' + score.yiDang + ' 日主' + score.dayStrength,
+            chartData: JSON.stringify(chart.pillars), scoreData: '自党' + score.ziDang + ' 异党' + score.yiDang + ' 日主' + score.dayStrength,
             analysisData: '用神' + analysis.yongShen + ' 喜' + analysis.xiShen.join('/') + ' 忌' + analysis.jiShen.join('/'),
-            specialtySummary,
-            currentDayun: curDayun ? curDayun.step.gan + curDayun.step.zhi + ' (' + curDayun.step.startAge + '-' + curDayun.step.endAge + '岁)' : '',
+            specialtySummary, currentDayun: curDayun ? curDayun.step.gan + curDayun.step.zhi + ' (' + curDayun.step.startAge + '-' + curDayun.step.endAge + '岁)' : '',
             nextDayun: nextDayun ? nextDayun.step.gan + nextDayun.step.zhi + ' (' + nextDayun.step.startAge + '-' + nextDayun.step.endAge + '岁)' : '',
-            dayunInteractions: curDayun?.interactions?.join('; ') || '',
-            liunianData: currentYear + '年 ' + liunianGan + liunianZhi + '年',
-            currentDayunContext: curDayun?.overall || '',
-            yongShen: analysis.yongShen,
-            xiShen: analysis.xiShen,
-            jiShen: analysis.jiShen,
-            dayStrength: score.dayStrength,
+            dayunInteractions: curDayun?.interactions?.join('; ') || '', liunianData: currentYear + '年 ' + liunianGan + liunianZhi + '年',
+            currentDayunContext: curDayun?.overall || '', yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen, dayStrength: score.dayStrength,
           });
         }
 
-        // 预计算结果（类型安全），传给报告生成器避免重复计算
+        // 预计算结果（传给报告生成器）
         precomputed = {
-          aiResult,
-          specialty,
-          yongShenResult: {
-            tiaohou: analysis.tiaohou,
-            fuyi: analysis.fuyi,
-            bingyao: analysis.bingyao,
-            engines: analysis.engines,
-            final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen },
-          },
-          score: {
-            dayStrength: score.dayStrength,
-            dayScore: score.dayScore,
-            elementScores: score.elementScores,
-            ziDang: score.ziDang,
-            yiDang: score.yiDang,
-          },
+          aiResult, specialty,
+          yongShenResult: { tiaohou: analysis.tiaohou, fuyi: analysis.fuyi, bingyao: analysis.bingyao, engines: analysis.engines, final: { yongShen: analysis.yongShen, xiShen: analysis.xiShen, jiShen: analysis.jiShen } },
+          score: { dayStrength: score.dayStrength, dayScore: score.dayScore, elementScores: score.elementScores, ziDang: score.ziDang, yiDang: score.yiDang },
         };
       }
 
