@@ -111,6 +111,38 @@ export function congGeEngine(ctx: LayeredContext): EngineResult {
     };
   }
 
+  // ── 日主有根检查（日支同五行 或 任一地支藏干有同五行） ──
+  const pillars = ctx.base.pillars as Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>;
+  const dayZhi = pillars.日柱?.zhi ?? '';
+  const dayZhiEl = ZHI_WX[dayZhi] ?? '';
+  // 日支同五行 = 自坐强根 → 不入从格
+  if (dayZhiEl === dayEl) {
+    return {
+      engine: '从格',
+      yongShen: null,
+      yongShenType: '奇格',
+      diagnostics: [`日支${dayZhi}为${dayEl}(自坐强根)，日主有根不入从格`],
+      specialPattern: false,
+    };
+  }
+  // 任一藏干有日主同五行 → 有根
+  let hasRootInCanggan = false;
+  for (const p of Object.values(pillars)) {
+    if (p.canggan.some(h => GAN_WX[h.stem] === dayEl)) {
+      hasRootInCanggan = true;
+      break;
+    }
+  }
+  if (hasRootInCanggan) {
+    return {
+      engine: '从格',
+      yongShen: null,
+      yongShenType: '奇格',
+      diagnostics: ['地支藏干有日主同五行根，不入从格'],
+      specialPattern: false,
+    };
+  }
+
   // ── 找最强异党 ──
   const offsetScores: Array<{ star: string; offset: number; score: number; ratio: number }> = [];
   for (const [star, offset] of Object.entries(STAR_OFFSET)) {
@@ -150,7 +182,6 @@ export function congGeEngine(ctx: LayeredContext): EngineResult {
   }
 
   // ── 假从检测 ──
-  const pillars = ctx.base.pillars as Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>;
   const isFalse = hasFloatingZiDang(pillars, dayEl);
 
   // ── 入格！ ──
