@@ -224,6 +224,7 @@ app.get('/api/subjects/:id/pdf', async (req, res) => {
     const pdf = await mdToPdf({ content: l6.content }, {
       pdf_options: { format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } },
       launch_options: { args: ['--no-sandbox'] },
+      css: `body { font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }`,
     });
     const filename = encodeURIComponent(s.name) + '-bazi-report.pdf';
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` });
