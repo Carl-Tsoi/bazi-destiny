@@ -201,14 +201,6 @@ export function congGeEngine(ctx: LayeredContext): EngineResult {
 
   // ═══ 6. 纯度检查 ═══
   if (!isCongShi) {
-    // 从财格: 官杀不能也旺（官杀泄财气）
-    if (congType === 'wealth') {
-      const killerEl = getEl(dayEl, 3);
-      const killerRatio = (scores[killerEl] ?? 0) / total;
-      if (killerRatio > 0.15) {
-        forcedFalse = true; // 财官混杂 → 降假从
-      }
-    }
     // 从杀格: 需有财生杀（孤杀不贵）
     if (congType === 'officials') {
       const wealthEl = getEl(dayEl, 2);
