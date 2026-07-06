@@ -94,17 +94,18 @@ app.get('/', (req, res) => {
   db.close();
   const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td></tr>`).join('');
   res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>八字命理</title>
-<style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px}
-h1{color:#c9a96e;text-align:center} .bar{text-align:center;color:#888;margin-bottom:20px}
-table{width:100%;border-collapse:collapse;background:#1a1a2e;border-radius:12px;overflow:hidden}
-th{background:#2a2a3e;color:#c9a96e;padding:12px;text-align:left;font-size:14px}
-td{padding:12px;border-bottom:1px solid #2a2a3e;font-size:14px}
-a{color:#c9a96e;text-decoration:none} a:hover{text-decoration:underline}
+<style>body{font-family:'PingFang SC',sans-serif;background:#f5f0eb;color:#333;margin:0;padding:20px}
+h1{color:#8b6914;text-align:center} .bar{text-align:center;color:#999;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+th{background:#faf6f0;color:#8b6914;padding:12px;text-align:center;font-size:14px;border-bottom:2px solid #e8d5b0}
+td{padding:12px;border-bottom:1px solid #f0e8d8;font-size:14px;text-align:center}
+tr:hover{background:#fdfaf5}
+a{color:#8b6914;text-decoration:none;font-weight:500} a:hover{text-decoration:underline}
 .btns{text-align:center;margin:20px 0}
-.btns a{display:inline-block;padding:10px 24px;background:#c9a96e;color:#1a1a2e;border-radius:8px;margin:0 8px;font-weight:bold;text-decoration:none}
-form{background:#1a1a2e;padding:20px;border-radius:12px;max-width:500px;margin:0 auto}
-form input,form select{padding:10px;margin:8px 0;border-radius:6px;border:1px solid #2a2a3e;background:#0f0f1a;color:#fff;width:100%;box-sizing:border-box}
-form button{padding:12px;background:#c9a96e;color:#1a1a2e;border:none;border-radius:8px;font-size:16px;font-weight:bold;width:100%;margin-top:12px;cursor:pointer}
+.btns a{display:inline-block;padding:10px 24px;background:#8b6914;color:#fff;border-radius:8px;margin:0 8px;font-weight:bold;text-decoration:none}
+form{background:#fff;padding:20px;border-radius:12px;max-width:500px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+form input,form select{padding:10px;margin:8px 0;border-radius:6px;border:1px solid #e0d5c0;background:#fdfaf5;color:#333;width:100%;box-sizing:border-box}
+form button{padding:12px;background:#8b6914;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;width:100%;margin-top:12px;cursor:pointer}
 </style></head><body>
 <h1>八字命理分析系统</h1>
 <p class="bar">命例总数 ${total} · 已生成报告 ${withReport}</p>
@@ -116,11 +117,11 @@ form button{padding:12px;background:#c9a96e;color:#1a1a2e;border:none;border-rad
 
 app.get('/new', (req, res) => {
   res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>新增命例</title>
-<style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px}
-h1{color:#c9a96e;text-align:center}a{color:#c9a96e}
-form{background:#1a1a2e;padding:20px;border-radius:12px;max-width:500px;margin:20px auto}
-input,select{padding:10px;margin:8px 0;border-radius:6px;border:1px solid #2a2a3e;background:#0f0f1a;color:#fff;width:100%;box-sizing:border-box}
-button{padding:12px;background:#c9a96e;color:#1a1a2e;border:none;border-radius:8px;font-size:16px;font-weight:bold;width:100%;margin-top:12px;cursor:pointer}
+<style>body{font-family:'PingFang SC',sans-serif;background:#f5f0eb;color:#333;margin:0;padding:20px}
+h1{color:#8b6914;text-align:center}a{color:#8b6914}
+form{background:#fff;padding:20px;border-radius:12px;max-width:500px;margin:20px auto;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+input,select{padding:10px;margin:8px 0;border-radius:6px;border:1px solid #e0d5c0;background:#fdfaf5;color:#333;width:100%;box-sizing:border-box}
+button{padding:12px;background:#8b6914;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;width:100%;margin-top:12px;cursor:pointer}
 #result{margin-top:16px;padding:12px;border-radius:8px;display:none}
 </style></head><body>
 <h1>新增命例</h1>
@@ -168,16 +169,16 @@ app.get('/report/:id', (req, res) => {
   if (!s) return res.status(404).send('Not found');
   const html = l6 ? marked.parse(l6.content) : '<p>(暂无报告，请先生成)</p>';
   res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${s.name} · 八字报告</title>
-<style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px;line-height:1.8}
-.nav{margin-bottom:16px}a{color:#c9a96e}h1,h2,h3{color:#c9a96e}h2{border-bottom:1px solid #2a2a3e;padding-bottom:8px;margin-top:32px}
-table{width:100%;border-collapse:collapse;margin:16px 0;background:#1a1a2e;border-radius:8px;overflow:hidden}
-th{background:#2a2a3e;color:#c9a96e;padding:10px 14px;text-align:center;font-size:14px}
-td{padding:10px 14px;border-bottom:1px solid #2a2a3e;font-size:14px;text-align:center}
-blockquote{background:rgba(201,169,110,.1);border-left:3px solid #c9a96e;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0}
-code{background:#2a2a3e;padding:2px 6px;border-radius:4px;font-size:13px}
-pre{background:#0f0f1a;padding:16px;border-radius:8px;overflow-x:auto}
-hr{border:none;border-top:1px solid #2a2a3e;margin:24px 0}
-details{margin:12px 0}summary{color:#c9a96e;cursor:pointer}
+<style>body{font-family:'PingFang SC',sans-serif;background:#f5f0eb;color:#333;margin:0;padding:20px;line-height:1.8}
+.nav{margin-bottom:16px}a{color:#8b6914}h1,h2,h3{color:#8b6914}h2{border-bottom:1px solid #e8d5b0;padding-bottom:8px;margin-top:32px}
+table{width:100%;border-collapse:collapse;margin:16px 0;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+th{background:#faf6f0;color:#8b6914;padding:10px 14px;text-align:center;font-size:14px;border-bottom:2px solid #e8d5b0}
+td{padding:10px 14px;border-bottom:1px solid #f0e8d8;font-size:14px;text-align:center}
+blockquote{background:#fdfaf5;border-left:3px solid #8b6914;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0}
+code{background:#f0e8d8;padding:2px 6px;border-radius:4px;font-size:13px;color:#8b6914}
+pre{background:#fdfaf5;padding:16px;border-radius:8px;overflow-x:auto;border:1px solid #e0d5c0}
+hr{border:none;border-top:1px solid #e8d5b0;margin:24px 0}
+details{margin:12px 0}summary{color:#8b6914;cursor:pointer}
 </style></head><body>
 <div class="nav"><a href="/">← 返回列表</a> | <a href="/api/subjects/${s.id}/report">原始MD</a> | <a href="/api/subjects/${s.id}/pdf" target="_blank">📄 下载PDF</a></div>
 <div class="report">${html}</div>
