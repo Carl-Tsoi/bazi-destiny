@@ -52,17 +52,32 @@ function hasFloatingZiDang(pillars: Record<string, { gan: string; zhi: string; s
   return false;
 }
 
-// 从格喜忌映射: 从什么就喜什么+喜生它的
-function computeCongXi(dayEl: string, starOffset: number): string[] {
-  const wangEl = ORDER[(ORDER.indexOf(dayEl) + starOffset) % 5];
-  const shengEl = ORDER[(ORDER.indexOf(wangEl) + 4) % 5]; // 生旺神的五行
-  return [wangEl, shengEl];
+// 从格喜忌 — 按子型查表（避免"旺神所生"在不同从格中含义不同）
+// 从财: 财生官杀克身→顺势喜官杀 / 从杀: 官杀生印生身→忌印 / 从儿: 食伤生财→顺势喜财
+const CONG_XI_MAP: Record<string, (dayEl: string) => string[]> = {
+  'wealth': (d) => { const di=ORDER.indexOf(d); return [ORDER[(di+2)%5], ORDER[(di+1)%5], ORDER[(di+3)%5]]; },
+  // 从财: 喜财(offset2) + 食伤生财(offset1) + 官杀(offset3,财生官杀克身顺势)
+  'officials': (d) => { const di=ORDER.indexOf(d); return [ORDER[(di+3)%5], ORDER[(di+2)%5]]; },
+  // 从杀: 喜官杀(offset3) + 财生官杀(offset2). 不喜印(offset4,泄官生身逆势)
+  'output': (d) => { const di=ORDER.indexOf(d); return [ORDER[(di+1)%5], ORDER[(di+0)%5], ORDER[(di+2)%5]]; },
+  // 从儿: 喜食伤(offset1) + 比劫生食伤(offset0) + 财泄秀(offset2)
+};
+const CONG_JI_MAP: Record<string, (dayEl: string) => string[]> = {
+  'wealth': (d) => { const di=ORDER.indexOf(d); return [d, ORDER[(di+4)%5]]; },
+  // 从财忌: 日主 + 印生身
+  'officials': (d) => { const di=ORDER.indexOf(d); return [d, ORDER[(di+4)%5], ORDER[(di+1)%5]]; },
+  // 从杀忌: 日主 + 印泄官生身 + 食伤制杀
+  'output': (d) => { const di=ORDER.indexOf(d); return [ORDER[(di+4)%5], ORDER[(di+3)%5]]; },
+  // 从儿忌: 印克食伤 + 官杀
+};
+
+function computeCongXi(dayEl: string, starType: string): string[] {
+  const fn = CONG_XI_MAP[starType];
+  return fn ? fn(dayEl) : [dayEl];
 }
-function computeCongJi(dayEl: string, starOffset: number): string[] {
-  const wangEl = ORDER[(ORDER.indexOf(dayEl) + starOffset) % 5];
-  const keEl = ORDER[(ORDER.indexOf(wangEl) + 3) % 5];    // 克旺神的五行
-  const opposite = [dayEl, ORDER[(ORDER.indexOf(dayEl) + 4) % 5]]; // 日主+印星(逆势)
-  return [...new Set([keEl, ...opposite])];
+function computeCongJi(dayEl: string, starType: string): string[] {
+  const fn = CONG_JI_MAP[starType];
+  return fn ? fn(dayEl) : [];
 }
 
 // 格局名
@@ -160,11 +175,11 @@ export function congGeEngine(ctx: LayeredContext): EngineResult {
 }
 
 /** 获取从格喜神 */
-export function getCongXi(dayEl: string, starOffset: number): string[] {
-  return computeCongXi(dayEl, starOffset);
+export function getCongXi(dayEl: string, starType: string): string[] {
+  return computeCongXi(dayEl, starType);
 }
 
 /** 获取从格忌神 */
-export function getCongJi(dayEl: string, starOffset: number): string[] {
-  return computeCongJi(dayEl, starOffset);
+export function getCongJi(dayEl: string, starType: string): string[] {
+  return computeCongJi(dayEl, starType);
 }

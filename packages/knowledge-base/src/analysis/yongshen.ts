@@ -104,15 +104,15 @@ export async function determineYongShen(
       xiShen = [...getZhuangWangXi(dayEl)];
       jiShen = [...getZhuangWangJi(dayEl)];
     } else if (winner.engine === '从格') {
-      // 从格需要知道旺神offset: 从diagnostics中解析旺神的十神类型
+      // 从格需要知道旺神十神类型: 从diagnostics中解析
       const diag = winner.diagnostics.join(' ');
-      let congOffset = 2; // 默认从财
-      if (diag.includes('从财')) congOffset = 2;
-      else if (diag.includes('从杀')) congOffset = 3;
-      else if (diag.includes('从儿')) congOffset = 1;
-      else if (diag.includes('从势')) congOffset = 2; // 从势暂用从财规则
-      xiShen = [...getCongXi(dayEl, congOffset)];
-      jiShen = [...getCongJi(dayEl, congOffset)];
+      let congType = 'wealth'; // 默认从财
+      if (diag.includes('从财')) congType = 'wealth';
+      else if (diag.includes('从杀')) congType = 'officials';
+      else if (diag.includes('从儿')) congType = 'output';
+      else if (diag.includes('从势')) congType = 'wealth'; // 从势暂用从财
+      xiShen = [...getCongXi(dayEl, congType)];
+      jiShen = [...getCongJi(dayEl, congType)];
     } else {
       xiShen = [...getBaseXi(fuyi.dayStrength, dayEl, dayIdx)];
       jiShen = [...getBaseJi(fuyi.dayStrength, dayEl, dayIdx)];
