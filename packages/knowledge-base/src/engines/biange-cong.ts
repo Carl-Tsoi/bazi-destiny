@@ -37,26 +37,30 @@ function getEl(dayEl: string, offset: number): string {
 
 type RootLevel = 'none' | 'trace' | 'weak' | 'strong';
 
-/** 检查日主是否有根及等级 */
-function checkDayRoot(pillars: Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>, dayEl: string): RootLevel {
-  // 1. 日支同五行 = 自坐强根
-  const dayZhiEl = ZHI_WX[(pillars as any).日柱?.zhi ?? ''] ?? '';
-  if (dayZhiEl === dayEl) return 'strong';
+/** 检查日主是否有生扶（印比根气）。从格必须无一丝生扶。 */
+function checkDaySupport(pillars: Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>, dayEl: string): RootLevel {
+  const sealEl = getEl(dayEl, 4); // 印星五行（生我）
+  const peerEl = dayEl;            // 比劫五行（同我）
 
-  // 2. 其他地支同五行 = 强根（月支/年支/时支是日主同五行）
+  // 1. 日支自坐印比 = 强根
+  const dayZhiEl = ZHI_WX[(pillars as any).日柱?.zhi ?? ''] ?? '';
+  if (dayZhiEl === peerEl || dayZhiEl === sealEl) return 'strong';
+
+  // 2. 其他地支有印比 = 强根
   for (const p of Object.values(pillars)) {
     if (p.shishen === '日主') continue;
     const zhiEl = ZHI_WX[p.zhi] ?? '';
-    if (zhiEl === dayEl) return 'strong';
+    if (zhiEl === peerEl || zhiEl === sealEl) return 'strong';
   }
 
-  // 3. 检查所有藏干
+  // 3. 藏干中检查印比根
   let bestLevel: RootLevel = 'none';
   for (const p of Object.values(pillars)) {
     for (let i = 0; i < p.canggan.length; i++) {
       const h = p.canggan[i];
-      if (GAN_WX[h.stem] === dayEl) {
-        if (i === 0) return 'strong';     // 主气根 → 强根
+      const hEl = GAN_WX[h.stem] ?? '';
+      if (hEl === peerEl || hEl === sealEl) {
+        if (i === 0) return 'strong';     // 主气根
         else if (i === 1 && bestLevel === 'none') bestLevel = 'weak';   // 中气根
         else if (i === 2 && bestLevel === 'none') bestLevel = 'trace';  // 余气根
       }
@@ -161,16 +165,14 @@ export function congGeEngine(ctx: LayeredContext): EngineResult {
 
   // ═══ 2. 根气检查 ═══
   const pillars = ctx.base.pillars as Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>;
-  const rootLevel = checkDayRoot(pillars, dayEl);
+  const rootLevel = checkDaySupport(pillars, dayEl);
   let forcedFalse = false; // 降为假从（不拒绝）
+  // 强根→拒绝 / 弱根→假从 / 无根→真从
   if (rootLevel === 'strong') {
-    return { engine: '从格', yongShen: null, yongShenType: '奇格', diagnostics: ['日主有强根(日支同五行或主气藏干)，不入从格'], specialPattern: false };
+    return { engine: '从格', yongShen: null, yongShenType: '奇格', diagnostics: ['日主有强根(地支印比或主气藏干)，不入从格'], specialPattern: false };
   }
-  if (rootLevel === 'weak') {
-    return { engine: '从格', yongShen: null, yongShenType: '奇格', diagnostics: ['日主有中气根，不入从格'], specialPattern: false };
-  }
-  if (rootLevel === 'trace') {
-    forcedFalse = true; // 余气弱根 → 降假从
+  if (rootLevel === 'weak' || rootLevel === 'trace') {
+    forcedFalse = true; // 中气/余气弱根 → 降假从
   }
 
   // ═══ 3. 天干印比检查 ═══
