@@ -26,6 +26,8 @@ import { qiongtongEngine } from '../engines/qiongtong.js';
 import { shenfengEngine } from '../engines/shenfeng.js';
 import { yuanhaiEngine } from '../engines/yuanhai.js';
 import { sanmingEngine } from '../engines/sanming.js';
+import { zhuangwangEngine, getZhuangWangXi, getZhuangWangJi } from '../engines/biange-zhuangwang.js';
+import { congGeEngine, getCongXi, getCongJi } from '../engines/biange-cong.js';
 import type { LayeredContext } from '../engines/types.js';
 
 const WUXING: Record<string, string> = {
@@ -80,21 +82,45 @@ export async function determineYongShen(
     engineResults: [],
   };
 
-  // 分层执行六引擎
-  for (const engine of [zipingEngine, ditiansuiEngine, qiongtongEngine, shenfengEngine, yuanhaiEngine, sanmingEngine]) {
+  // 分层执行引擎：先变格（极旺/极弱），后正格（六书）
+  for (const engine of [zhuangwangEngine, congGeEngine, zipingEngine, ditiansuiEngine, qiongtongEngine, shenfengEngine, yuanhaiEngine, sanmingEngine]) {
     const result = engine(ctx);
     ctx.engineResults.push(result);
-    if (result.specialPattern) break; // 从格/奇格中断后续
+    if (result.specialPattern) break; // 变格命中中断后续引擎
   }
 
-  // 用神:取第一个有非null输出的引擎(优先格局),否则扶抑
+  // 用神:取第一个有非null输出的引擎(变格优先),否则扶抑
   let finalYongShen = fuyi.yongShen;
+  let isBianGe = false;
   for (const r of ctx.engineResults) {
-    if (r.yongShen) { finalYongShen = r.yongShen; break; }
+    if (r.yongShen) { finalYongShen = r.yongShen; isBianGe = r.engine === '专旺格' || r.engine === '从格'; break; }
   }
 
-  const xiShen = [...getBaseXi(fuyi.dayStrength, dayEl, dayIdx)];
-  const jiShen = [...getBaseJi(fuyi.dayStrength, dayEl, dayIdx)];
+  // 喜忌：变格用自己的喜忌规则，正格用扶抑规则
+  let xiShen: string[], jiShen: string[];
+  if (isBianGe && ctx.engineResults.length > 0) {
+    const winner = ctx.engineResults[ctx.engineResults.length - 1]; // 命中变格的引擎
+    if (winner.engine === '专旺格') {
+      xiShen = [...getZhuangWangXi(dayEl)];
+      jiShen = [...getZhuangWangJi(dayEl)];
+    } else if (winner.engine === '从格') {
+      // 从格需要知道旺神offset: 从diagnostics中解析旺神的十神类型
+      const diag = winner.diagnostics.join(' ');
+      let congOffset = 2; // 默认从财
+      if (diag.includes('从财')) congOffset = 2;
+      else if (diag.includes('从杀')) congOffset = 3;
+      else if (diag.includes('从儿')) congOffset = 1;
+      else if (diag.includes('从势')) congOffset = 2; // 从势暂用从财规则
+      xiShen = [...getCongXi(dayEl, congOffset)];
+      jiShen = [...getCongJi(dayEl, congOffset)];
+    } else {
+      xiShen = [...getBaseXi(fuyi.dayStrength, dayEl, dayIdx)];
+      jiShen = [...getBaseJi(fuyi.dayStrength, dayEl, dayIdx)];
+    }
+  } else {
+    xiShen = [...getBaseXi(fuyi.dayStrength, dayEl, dayIdx)];
+    jiShen = [...getBaseJi(fuyi.dayStrength, dayEl, dayIdx)];
+  }
   if (!xiShen.includes(finalYongShen)) xiShen.push(finalYongShen);
   jiShen.splice(0, jiShen.length, ...jiShen.filter(j => !xiShen.includes(j)));
 
