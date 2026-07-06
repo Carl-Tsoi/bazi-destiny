@@ -32,12 +32,14 @@ function getEl(dayEl: string, offset: number): string {
   return ORDER[(di + offset) % 5];
 }
 
-/** 检测天干是否有虚浮印比（假从判断） */
+/** 检测天干是否有虚浮印比（假从判断） — 排除日柱自身 */
 function hasFloatingZiDang(pillars: Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>, dayEl: string): boolean {
   const sealEl = getEl(dayEl, 4);   // 印星五行
   const peerEl = dayEl;              // 比劫五行
 
   for (const p of Object.values(pillars)) {
+    // 跳过日柱自身——日主天干不是"外部生扶"
+    if (p.shishen === '日主') continue;
     const ganEl = GAN_WX[p.gan] ?? '';
     // 天干是印比
     if (ganEl === sealEl || ganEl === peerEl) {
