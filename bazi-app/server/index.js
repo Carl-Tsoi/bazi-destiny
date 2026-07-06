@@ -6,7 +6,8 @@ const app = express();
 app.use(express.json());
 
 const DB_PATH = path.join(__dirname, '..', '..', 'bazi-destiny.db');
-const CLI_PATH = path.join(__dirname, '..', '..', 'packages', 'cli', 'src', 'index.ts');
+const CLI_DIR = path.join(__dirname, '..', '..');
+const CLI_PATH = path.join(CLI_DIR, 'packages', 'cli', 'src', 'index.ts');
 
 function getDb() { return new Database(DB_PATH); }
 
@@ -41,9 +42,8 @@ app.post('/api/subjects', async (req, res) => {
   if (!name || !gender || !datetime) return res.status(400).json({ error: 'name/gender/datetime required' });
   try {
     const dt = datetime.replace('T',' ').replace('  ',' ');
-    const child = spawn('npx', ['tsx', CLI_PATH, dt, '--gender', gender, '--name', name, '--report'], { cwd: path.join(__dirname,'..','..'), env: {...process.env}, timeout: 120000 });
-    let out='', err='';
-    child.stdout.on('data',d=>out+=d); child.stderr.on('data',d=>err+=d);
+    const child = spawn('npx', ['tsx', CLI_PATH, dt, '--gender', gender, '--name', name, '--report'], { cwd: CLI_DIR, env: {...process.env}, timeout: 120000 });
+    let err=''; child.stderr.on('data',d=>err+=d);
     await new Promise((resolve,reject) => child.on('close',code=>code===0?resolve():reject(new Error(err||'CLI failed'))));
     const db = getDb(); const s2 = db.prepare('SELECT id FROM subjects WHERE name=? ORDER BY id DESC LIMIT 1').get(name); db.close();
     res.json({ success: true, subjectId: s2?.id });
@@ -55,9 +55,8 @@ app.post('/api/subjects/:id/calculate', async (req, res) => {
   if (!s) return res.status(404).json({ error: 'Not found' });
   try {
     const dt = (s.datetime||'').replace('T',' ');
-    const child = spawn('npx', ['tsx', CLI_PATH, dt, '--gender', s.gender, '--name', s.name, '--report'], { cwd: path.join(__dirname,'..','..'), env: {...process.env}, timeout: 120000 });
-    let out='', err='';
-    child.stdout.on('data',d=>out+=d); child.stderr.on('data',d=>err+=d);
+    const child = spawn('npx', ['tsx', CLI_PATH, dt, '--gender', s.gender, '--name', s.name, '--report'], { cwd: CLI_DIR, env: {...process.env}, timeout: 120000 });
+    let err=''; child.stderr.on('data',d=>err+=d);
     await new Promise((resolve,reject) => child.on('close',code=>code===0?resolve():reject(new Error(err||'CLI failed'))));
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -82,4 +81,4 @@ app.get('/api/stats', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3100;
-app.listen(PORT, () => console.log('Bazi API on http://localhost:'+PORT));
+app.listen(PORT, () => console.log('Bazi API http://localhost:'+PORT));
