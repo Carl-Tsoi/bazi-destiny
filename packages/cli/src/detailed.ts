@@ -178,7 +178,10 @@ export async function generateBaziReport(
   L.push('|----------|------|------|------|');
   const typeNames: Record<string, string> = { 格局用神: '格局', 平衡用神: '扶抑', 调候用神: '调候', 病药用神: '病药', 神煞: '神煞', 奇格: '奇格' };
   for (const e of yongShenResult.engines ?? []) {
-    L.push(`| ${e.name} | ${typeNames[e.yongShenType ?? ''] ?? ''} | ${e.yongShen ?? '—'} | ${e.diagnostics.join('；')} |`);
+    // 过滤"不入"的变格引擎 — 只显示最终生效的格局判断
+    const diag = e.diagnostics.join('；');
+    if (diag.includes('不入')) continue;
+    L.push(`| ${e.name} | ${typeNames[e.yongShenType ?? ''] ?? ''} | ${e.yongShen ?? '—'} | ${diag} |`);
   }
   L.push('');
 
