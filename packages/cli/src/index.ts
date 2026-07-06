@@ -63,10 +63,9 @@ program
         { name: 'bazi', engine: new BaziEngine() },
       ];
 
-      // Initialize database
-      const dbPath = join(process.cwd(), 'data', 'bazi-destiny.db');
       const fs = await import('fs');
-      fs.mkdirSync(join(process.cwd(), 'data'), { recursive: true });
+      // Initialize database
+      const dbPath = join(process.cwd(), 'bazi-destiny.db');
       const db = initDatabase(dbPath);
 
       // Run engines in parallel
