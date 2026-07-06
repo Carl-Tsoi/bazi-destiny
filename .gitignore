@@ -12,3 +12,6 @@ data/bazi-destiny.db
 bazi-destiny.db
 *.db-shm
 *.db-wal
+*.db-shm
+*.db-wal
+Gemini_Generated_Image_*
