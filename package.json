@@ -17,5 +17,11 @@
   "devDependencies": {
     "turbo": "^2.0.0",
     "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "express": "^5.2.1",
+    "marked": "^18.0.5",
+    "md-to-pdf": "^5.2.5"
   }
 }
