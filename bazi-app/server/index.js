@@ -3,6 +3,9 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const { spawn } = require('child_process');
 const { marked } = require('marked');
+const { mdToPdf } = require('md-to-pdf');
+const fs = require('fs');
+const os = require('os');
 const app = express();
 app.use(express.json());
 
@@ -140,6 +143,23 @@ else{r.style.background='#3a1a1a';r.textContent='失败: '+JSON.stringify(d);}
 </script></body></html>`);
 });
 
+app.get('/api/subjects/:id/pdf', async (req, res) => {
+  const db = getDb();
+  const s = db.prepare('SELECT * FROM subjects WHERE id=?').get(req.params.id);
+  const l6 = db.prepare("SELECT content FROM l6_reports WHERE subject_id=? AND format='md' ORDER BY generated_at DESC LIMIT 1").get(req.params.id);
+  db.close();
+  if (!s || !l6) return res.status(404).send('No report');
+  try {
+    const pdf = await mdToPdf({ content: l6.content }, {
+      pdf_options: { format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } },
+      launch_options: { args: ['--no-sandbox'] },
+    });
+    const filename = encodeURIComponent(s.name) + '-bazi-report.pdf';
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` });
+    res.send(pdf.content);
+  } catch(e) { res.status(500).send('PDF generation failed: '+e.message); }
+});
+
 app.get('/report/:id', (req, res) => {
   const db = getDb();
   const s = db.prepare('SELECT * FROM subjects WHERE id=?').get(req.params.id);
@@ -151,15 +171,15 @@ app.get('/report/:id', (req, res) => {
 <style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px;line-height:1.8}
 .nav{margin-bottom:16px}a{color:#c9a96e}h1,h2,h3{color:#c9a96e}h2{border-bottom:1px solid #2a2a3e;padding-bottom:8px;margin-top:32px}
 table{width:100%;border-collapse:collapse;margin:16px 0;background:#1a1a2e;border-radius:8px;overflow:hidden}
-th{background:#2a2a3e;color:#c9a96e;padding:10px 14px;text-align:left;font-size:14px}
-td{padding:10px 14px;border-bottom:1px solid #2a2a3e;font-size:14px}
+th{background:#2a2a3e;color:#c9a96e;padding:10px 14px;text-align:center;font-size:14px}
+td{padding:10px 14px;border-bottom:1px solid #2a2a3e;font-size:14px;text-align:center}
 blockquote{background:rgba(201,169,110,.1);border-left:3px solid #c9a96e;padding:12px 16px;margin:16px 0;border-radius:0 8px 8px 0}
 code{background:#2a2a3e;padding:2px 6px;border-radius:4px;font-size:13px}
 pre{background:#0f0f1a;padding:16px;border-radius:8px;overflow-x:auto}
 hr{border:none;border-top:1px solid #2a2a3e;margin:24px 0}
 details{margin:12px 0}summary{color:#c9a96e;cursor:pointer}
 </style></head><body>
-<div class="nav"><a href="/">← 返回列表</a> | <a href="/api/subjects/${s.id}/report">查看原始MD</a></div>
+<div class="nav"><a href="/">← 返回列表</a> | <a href="/api/subjects/${s.id}/report">原始MD</a> | <a href="/api/subjects/${s.id}/pdf" target="_blank">📄 下载PDF</a></div>
 <div class="report">${html}</div>
 </body></html>`);
 });
