@@ -13,7 +13,7 @@ import { BaziEngine } from '@bazi-destiny/engine-bazi';
 import { renderBazi } from './ascii.js';
 import { runSensitivity } from './sensitivity.js';
 import { cite, scoreChart, analyzeChart, analyzeAllDimensions } from '@bazi-destiny/knowledge-base';
-import type { ChartResult } from '@bazi-destiny/knowledge-base';
+import type { ChartResult, ScoreResult } from '@bazi-destiny/knowledge-base';
 import { generateBaziReport, generateScoringReport } from './detailed.js';
 import type { PrecomputedData } from './types.js';
 import { generateAiAnalyses } from '@bazi-destiny/reports';
@@ -28,6 +28,7 @@ program
   .description('Three-system cross-validation destiny analysis CLI')
   .argument('<datetime>', 'Birth datetime (YYYY-MM-DD HH:MM)')
   .requiredOption('--gender <M|F>', 'Gender (M or F)')
+  .requiredOption('--name <name>', 'Person name (required for record keeping)')
   .option('--lat <number>', 'Birth latitude (-90 to 90)', parseFloat)
   .option('--lon <number>', 'Birth longitude (-180 to 180)', parseFloat)
   .option('--true-solar', 'Enable true solar time correction (requires --lat --lon)')
@@ -35,7 +36,6 @@ program
   .option('--debug', 'Show full error stack traces')
   .option('--json', 'Output raw JSON only (no ASCII art)')
   .option('--output <path>', 'Save output to file instead of stdout')
-  .option('--name <name>', 'Person name for report and case registry')
   .option('--consensus', 'Run cross-validation consensus analysis')
   .option('--citations', 'Include classical text citations')
   .option('--report', 'Generate professional markdown report')
@@ -117,9 +117,7 @@ program
         const bazi = outputs.bazi as Record<string, unknown>;
 
         // ── L1: 命主注册 ──
-        const subjectId = options.name
-          ? upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' })
-          : 0;
+        const subjectId = upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
 
         // ── L2: 排盘 → DB ──
         const chart: ChartResult = {
@@ -150,13 +148,13 @@ program
         // ── L4: 用神分析（从L3读分数）→ DB ──
         const l3Row = subjectId ? getL3Score(db, subjectId) : null;
         const l3Score = l3Row ? {
-          elementScores: JSON.parse(l3Row.element_scores_json as string),
+          elementScores: JSON.parse(l3Row.element_scores_json as string) as Record<string, number>,
           dayScore: l3Row.day_score as number,
-          dayStrength: l3Row.day_strength as string,
+          dayStrength: l3Row.day_strength as '身强' | '身弱',
           ziDang: l3Row.zi_dang as number, yiDang: l3Row.yi_dang as number,
-          details: JSON.parse(l3Row.details_json as string),
+          details: JSON.parse(l3Row.details_json as string) as string[],
           climateVersion: l3Row.climate_version as number,
-        } : score;
+        } satisfies ScoreResult : score;
         const analysis = await analyzeChart(chart, l3Score, { age, gender: birthInfo.gender as 'M' | 'F' });
         if (subjectId) writeL4Analysis(db, subjectId, {
           yongShen: analysis.yongShen, xiShenJson: JSON.stringify(analysis.xiShen), jiShenJson: JSON.stringify(analysis.jiShen),
@@ -373,10 +371,6 @@ program
         }
       }
 
-      // Save to case registry (DB) if --name provided
-      if (options.name) {
-        upsertSubject(db, { name: options.name, datetime: birthInfo.datetime, latitude: birthInfo.latitude, longitude: birthInfo.longitude, timezone: birthInfo.timezone, gender: birthInfo.gender as 'M' | 'F' });
-      }
 
       db.close();
 
