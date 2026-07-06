@@ -106,27 +106,6 @@ program
 
         if (r.status === 'fulfilled' && r.value.success) {
           outputs[engineName] = r.value.data;
-
-          // Store in DB
-          try {
-            const stmt = db.prepare(
-              'INSERT INTO subjects (datetime, latitude, longitude, timezone, gender) VALUES (?, ?, ?, ?, ?)',
-            );
-            const info = stmt.run(birthInfo.datetime, birthInfo.latitude, birthInfo.longitude, birthInfo.timezone, birthInfo.gender);
-            const subjectId = info.lastInsertRowid as number;
-
-            const tableMap: Record<string, string> = {
-              bazi: 'bazi_charts',
-              ziwei: 'ziwei_charts',
-              astrology: 'astro_charts',
-            };
-            db.prepare(`INSERT INTO ${tableMap[engineName]} (subject_id, chart_data) VALUES (?, ?)`).run(
-              subjectId,
-              JSON.stringify(r.value.data),
-            );
-          } catch {
-            // DB write is best-effort; don't fail CLI output
-          }
         } else {
           const errMsg = r.status === 'fulfilled' ? (r.value.success ? '' : r.value.error) : String(r.reason);
           errors.push(`${engineName}: ${errMsg}`);
