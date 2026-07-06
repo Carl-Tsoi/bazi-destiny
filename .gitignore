@@ -8,3 +8,4 @@ scripts/
 
 # Case data: track index files, ignore generated system results
 data/*/
+data/bazi-destiny.db

@@ -64,9 +64,9 @@ program
       ];
 
       // Initialize database
-      const dbPath = join(homedir(), '.bazi-destiny', 'charts.db');
+      const dbPath = join(process.cwd(), 'data', 'bazi-destiny.db');
       const fs = await import('fs');
-      fs.mkdirSync(join(homedir(), '.bazi-destiny'), { recursive: true });
+      fs.mkdirSync(join(process.cwd(), 'data'), { recursive: true });
       const db = initDatabase(dbPath);
 
       // Run engines in parallel
