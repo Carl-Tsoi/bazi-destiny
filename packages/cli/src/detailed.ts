@@ -481,10 +481,7 @@ export async function generateBaziReport(
   if (!birthInfo?.skipAi) {
     const aiData = (precomputed as any)?.aiResult;
     if (aiData?.yuanju) {
-      L.push('## 第八章  AI 深度解读');
-      L.push('');
-      L.push('> 🤖 以下内容由 AI 模型生成，仅供参考。命理分析的核心结论以上述规则引擎产出为准。');
-      L.push('');
+      L.push('## 第八章  深度解读');
       const clean = (s: string) => s.replace(/^###[^\n]*\n?/gm, '').trim();
       L.push('### 原局分析');
       L.push('');
