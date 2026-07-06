@@ -81,4 +81,80 @@ app.get('/api/stats', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3100;
+
+app.get('/', (req, res) => {
+  const db = getDb();
+  const total = db.prepare('SELECT COUNT(*) as c FROM subjects').get().c;
+  const withReport = db.prepare('SELECT COUNT(DISTINCT subject_id) as c FROM l6_reports').get().c;
+  const subjects = db.prepare("SELECT s.id, s.name, s.gender, s.datetime, l2.day_gan, l2.day_zhi, l2.pattern, l4.yong_shen, l5.grade FROM subjects s LEFT JOIN l2_charts l2 ON s.id=l2.subject_id LEFT JOIN l4_analyses l4 ON s.id=l4.subject_id LEFT JOIN l5_specialties l5 ON s.id=l5.subject_id ORDER BY s.id DESC").all();
+  db.close();
+  const rows = subjects.map(s => `<tr><td><a href="/report/${s.id}">${s.name||'-'}</a></td><td>${s.gender}</td><td>${(s.datetime||'').replace('T',' ')}</td><td>${s.day_gan||''}${s.day_zhi||''}</td><td>${s.pattern||''}</td><td>${s.yong_shen||''}</td><td>${s.grade||''}</td></tr>`).join('');
+  res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>八字命理</title>
+<style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px}
+h1{color:#c9a96e;text-align:center} .bar{text-align:center;color:#888;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;background:#1a1a2e;border-radius:12px;overflow:hidden}
+th{background:#2a2a3e;color:#c9a96e;padding:12px;text-align:left;font-size:14px}
+td{padding:12px;border-bottom:1px solid #2a2a3e;font-size:14px}
+a{color:#c9a96e;text-decoration:none} a:hover{text-decoration:underline}
+.btns{text-align:center;margin:20px 0}
+.btns a{display:inline-block;padding:10px 24px;background:#c9a96e;color:#1a1a2e;border-radius:8px;margin:0 8px;font-weight:bold;text-decoration:none}
+form{background:#1a1a2e;padding:20px;border-radius:12px;max-width:500px;margin:0 auto}
+form input,form select{padding:10px;margin:8px 0;border-radius:6px;border:1px solid #2a2a3e;background:#0f0f1a;color:#fff;width:100%;box-sizing:border-box}
+form button{padding:12px;background:#c9a96e;color:#1a1a2e;border:none;border-radius:8px;font-size:16px;font-weight:bold;width:100%;margin-top:12px;cursor:pointer}
+</style></head><body>
+<h1>八字命理分析系统</h1>
+<p class="bar">命例总数 ${total} · 已生成报告 ${withReport}</p>
+<div class="btns"><a href="/new">+ 新增命例</a></div>
+<table><thead><tr><th>姓名</th><th>性别</th><th>出生</th><th>日柱</th><th>格局</th><th>用神</th><th>等级</th></tr></thead><tbody>${rows}</tbody></table>
+<script>fetch('/api/stats').then(r=>r.json()).then(d=>{document.querySelector('.bar').textContent='命例 '+d.total+' · 报告 '+d.withReport+' · 身强'+d.strength.filter(x=>x.day_strength==='身强')[0]?.c+' 身弱'+d.strength.filter(x=>x.day_strength==='身弱')[0]?.c})</script>
+</body></html>`);
+});
+
+app.get('/new', (req, res) => {
+  res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>新增命例</title>
+<style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px}
+h1{color:#c9a96e;text-align:center}a{color:#c9a96e}
+form{background:#1a1a2e;padding:20px;border-radius:12px;max-width:500px;margin:20px auto}
+input,select{padding:10px;margin:8px 0;border-radius:6px;border:1px solid #2a2a3e;background:#0f0f1a;color:#fff;width:100%;box-sizing:border-box}
+button{padding:12px;background:#c9a96e;color:#1a1a2e;border:none;border-radius:8px;font-size:16px;font-weight:bold;width:100%;margin-top:12px;cursor:pointer}
+#result{margin-top:16px;padding:12px;border-radius:8px;display:none}
+</style></head><body>
+<h1>新增命例</h1>
+<form id="form"><input name="name" placeholder="姓名" required>
+<select name="gender"><option value="M">男</option><option value="F">女</option></select>
+<input name="date" type="date" required><input name="time" type="time" value="12:00" required>
+<button type="submit">开始排盘</button></form>
+<div id="result"></div>
+<script>
+document.getElementById('form').onsubmit=async e=>{e.preventDefault();
+const fd=new FormData(e.target);
+const r=document.getElementById('result');r.style.display='block';r.style.background='#1a1a2e';r.textContent='排盘中...';
+try{
+const res=await fetch('/api/subjects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:fd.get('name'),gender:fd.get('gender'),datetime:fd.get('date')+'T'+fd.get('time')})});
+const d=await res.json();
+if(d.subjectId){r.style.background='#2a3a1a';r.innerHTML='排盘完成! <a href=\"/report/'+d.subjectId+'\">查看报告</a>';}
+else{r.style.background='#3a1a1a';r.textContent='失败: '+JSON.stringify(d);}
+}catch(err){r.style.background='#3a1a1a';r.textContent='错误: '+err.message;}
+};
+</script></body></html>`);
+});
+
+app.get('/report/:id', (req, res) => {
+  const db = getDb();
+  const s = db.prepare('SELECT * FROM subjects WHERE id=?').get(req.params.id);
+  const l6 = db.prepare("SELECT content FROM l6_reports WHERE subject_id=? AND format='md' ORDER BY generated_at DESC LIMIT 1").get(req.params.id);
+  db.close();
+  if (!s) return res.status(404).send('Not found');
+  const md = l6 ? l6.content.replace(/<span /g,'<span ').replace(/\n/g,'<br>') : '(暂无报告，请先生成)';
+  res.type('html').send(`<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>${s.name} · 八字报告</title>
+<style>body{font-family:'PingFang SC',sans-serif;background:#0f0f1a;color:#ccc;margin:0;padding:20px;line-height:1.8}
+h1{color:#c9a96e}a{color:#c9a96e}.nav{margin-bottom:16px}
+.report{background:#1a1a2e;padding:24px;border-radius:12px}
+</style></head><body>
+<div class="nav"><a href="/">← 返回列表</a></div>
+<h1>${s.name} · ${s.gender==='M'?'男':'女'} · ${(s.datetime||'').replace('T',' ')}</h1>
+<div class="report">${md}</div>
+</body></html>`);
+});
+
 app.listen(PORT, () => console.log('Bazi API http://localhost:'+PORT));
