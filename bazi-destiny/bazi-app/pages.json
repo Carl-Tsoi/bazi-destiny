@@ -1,0 +1,7 @@
+{
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationBarTitleText": "命理自测", "navigationBarBackgroundColor": "#1a1a2e", "navigationBarTextStyle": "white" } },
+    { "path": "pages/chart/chart", "style": { "navigationBarTitleText": "命盘详情", "navigationBarBackgroundColor": "#1a1a2e", "navigationBarTextStyle": "white" } }
+  ],
+  "globalStyle": { "navigationBarTextStyle": "white", "navigationBarTitleText": "八字命理", "navigationBarBackgroundColor": "#1a1a2e", "backgroundColor": "#0f0f1a" }
+}
