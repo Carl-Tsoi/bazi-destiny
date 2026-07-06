@@ -2,16 +2,13 @@
  * 专项引擎: 子女 (6/11) v3 — 传统规则: 男命官杀为子女星, 女命食伤为子女星
  */
 import type { SharedContext } from './shared/context.js';
-import type { AnalysisItem, SpecContext } from './types.js';
+import type { AnalysisItem } from './types.js';
 import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
 import {
   lookupStarTemplate, lookupPalaceTemplate,
 } from './shared/template-lookup.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'children';
-
-export function childrenEngine(_ctx: SpecContext): string[] { return []; }
-
 export function analyzeChildren(ctx: SharedContext): AnalysisItem[] {
   const items: AnalysisItem[] = [];
 

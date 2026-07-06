@@ -2,15 +2,13 @@
  * 专项引擎: 晚年 (11/11) v3 — 传统规则: 男命官杀为子女星→晚年依靠, 女命食伤
  */
 import type { SharedContext } from './shared/context.js';
-import type { AnalysisItem, SpecContext } from './types.js';
+import type { AnalysisItem } from './types.js';
 import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
 import {
   lookupStarTemplate, lookupPalaceTemplate,
 } from './shared/template-lookup.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'later-life';
-
-export function laterLifeEngine(_ctx: SpecContext): string[] { return []; }
 
 export function analyzeLaterLife(ctx: SharedContext): AnalysisItem[] {
   const items: AnalysisItem[] = [];

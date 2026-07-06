@@ -2,14 +2,11 @@
  * 专项引擎: 田宅 (10/11) v3 — 统一评估器
  */
 import type { SharedContext } from './shared/context.js';
-import type { AnalysisItem, SpecContext } from './types.js';
+import type { AnalysisItem } from './types.js';
 import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
 import { lookupStarTemplate } from './shared/template-lookup.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'property';
-
-export function propertyEngine(_ctx: SpecContext): string[] { return []; }
-
 export function analyzeProperty(ctx: SharedContext): AnalysisItem[] {
   const items: AnalysisItem[] = [];
 

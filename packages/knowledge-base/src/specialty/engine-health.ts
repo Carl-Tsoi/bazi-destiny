@@ -2,16 +2,13 @@
  * 专项引擎: 健康 (5/11) v3 — 统一评估器
  */
 import type { SharedContext } from './shared/context.js';
-import type { AnalysisItem, SpecContext } from './types.js';
+import type { AnalysisItem } from './types.js';
 import { fileURLToPath } from 'url'; import { dirname, join } from 'path';
 import {
   lookupBaseTemplate, lookupBaseTemplateWithReplace, lookupContentTemplateWithReplace,
 } from './shared/template-lookup.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CDIR = join(__dirname, 'content'); const DIM = 'health';
-
-export function healthEngine(_ctx: SpecContext): string[] { return []; }
-
 export function analyzeHealth(ctx: SharedContext): AnalysisItem[] {
   const items: AnalysisItem[] = [];
 
