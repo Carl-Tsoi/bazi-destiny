@@ -37,21 +37,28 @@ function getEl(dayEl: string, offset: number): string {
 
 type RootLevel = 'none' | 'trace' | 'weak' | 'strong';
 
-/** 检查地支藏干中是否有日主同五行的根及等级 */
+/** 检查日主是否有根及等级 */
 function checkDayRoot(pillars: Record<string, { gan: string; zhi: string; shishen: string; canggan: Array<{ stem: string; tenGod: string }> }>, dayEl: string): RootLevel {
   // 1. 日支同五行 = 自坐强根
   const dayZhiEl = ZHI_WX[(pillars as any).日柱?.zhi ?? ''] ?? '';
   if (dayZhiEl === dayEl) return 'strong';
 
-  // 2. 检查所有藏干
+  // 2. 其他地支同五行 = 强根（月支/年支/时支是日主同五行）
+  for (const p of Object.values(pillars)) {
+    if (p.shishen === '日主') continue;
+    const zhiEl = ZHI_WX[p.zhi] ?? '';
+    if (zhiEl === dayEl) return 'strong';
+  }
+
+  // 3. 检查所有藏干
   let bestLevel: RootLevel = 'none';
   for (const p of Object.values(pillars)) {
     for (let i = 0; i < p.canggan.length; i++) {
       const h = p.canggan[i];
       if (GAN_WX[h.stem] === dayEl) {
-        if (i === 0 && bestLevel !== 'strong') bestLevel = 'strong';     // 主气根
-        else if (i === 1 && bestLevel === 'none') bestLevel = 'weak';     // 中气根
-        else if (i === 2 && bestLevel === 'none') bestLevel = 'trace';    // 余气根
+        if (i === 0) return 'strong';     // 主气根 → 强根
+        else if (i === 1 && bestLevel === 'none') bestLevel = 'weak';   // 中气根
+        else if (i === 2 && bestLevel === 'none') bestLevel = 'trace';  // 余气根
       }
     }
   }
