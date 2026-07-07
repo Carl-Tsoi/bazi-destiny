@@ -329,6 +329,7 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 - `knowledge-base/src/index.ts` 移除 `analyzeZiwei`/`PATTERN_COMMENTARY` 等导出
 - `cli/package.json`、`reports/package.json` 清掉对上述包的依赖；根 `package.json` description → "Bazi (four-pillar) destiny analysis CLI"
 - 验证：`turbo run build` 5/5 全绿，L3 24✅/0❌，L5a + specialty 全过，零退化
+- 第二轮（同日）：`cli/src/ascii.ts` 移除 `renderZiwei`/`renderAstrology`，删 `core/src/schemas/ziwei.ts`、`schemas/astrology.ts` 及 `core/src/index.ts` 对应导出（`ZiweiChart`/`WesternChart` 类型彻底下线），build 5/5 + L3 24✅/0❌
 
 ## 最新变更（2026-07-02）— 报告格式重设计 + 性别规则修正
 
@@ -370,7 +371,6 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 - **旧版 `*Engine()` 桩函数**：待彻底移除。
 - **类型安全债**：`(bazi as any)._precomputed` / `Object.assign` 注入仍存在（详见 `docs/system-flow.md` 问题清单 A–G）。
 - **报告生成器 fallback**：`detailed.ts` 仍可在 `precomputed` 缺失时重算 `determineYongShen()`，打破单一数据源。
-- **core 紫微/占星 schema 清理（第二轮）**：`core/src/schemas/ziwei.ts`、`schemas/astrology.ts`（`ZiweiChart`/`WesternChart` 类型）在主消费者（cross-validator / reports.generateReport）删除后可能已 dead，待确认后清理。
 - **文档同步**：`change-log.md`(停在 06-29)、`pending-cases.md`(06-26)、`questions.md`(~60 个待师父确认的算法/古籍问题) 均未跟进最新代码。
 
 ## 编码规范
