@@ -31,13 +31,15 @@ export function scoreChart(chart: ChartResult): ScoreResult {
 function extractZiDang(details: string[]): number {
   const line = details.find(d => d.startsWith('归日'));
   if (!line) return 0;
-  const m = line.match(/自党.*?[=＝]([\d.]+)/);
+  // [-]? 吃负号：归日行格式 "自党=日-0.09+印...=<ziDang>"，末值可能为负；
+  // 不加负号则 [\d.]+ 越过负值误抓同行的异党值。
+  const m = line.match(/自党.*?[=＝]([-]?[\d.]+)/);
   return m ? parseFloat(m[1]) : 0;
 }
 
 function extractYiDang(details: string[]): number {
   const line = details.find(d => d.startsWith('归日'));
   if (!line) return 0;
-  const m = line.match(/异党.*?[=＝]([\d.]+)/);
+  const m = line.match(/异党.*?[=＝]([-]?[\d.]+)/);
   return m ? parseFloat(m[1]) : 0;
 }

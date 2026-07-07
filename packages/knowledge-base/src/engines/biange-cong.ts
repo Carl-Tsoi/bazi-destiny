@@ -165,11 +165,20 @@ function areAllRootsDestroyed(pillars: Record<string, { gan: string; zhi: string
     return false;
   }
 
-  // 每个地支根都被冲才视为全部摧毁
-  return supportZhis.every(z => {
-    const chongZhi = CHONG[z];
-    return chongZhi && allZhis.includes(chongZhi);
-  });
+  // 子午冲等六冲是 1:1：一个冲支只能冲散一个同类根。
+  // 周锦俊例：2个午(比劫) vs 1个子，只能冲散1个午，另一午存活→非全毁→不入从格。
+  // 旧逻辑 supportZhis.every(z => 对家在场) 会把多根共冲一支误判为全毁。
+  const supportByPartner: Record<string, number> = {};
+  for (const z of supportZhis) {
+    const p = CHONG[z];
+    if (p) supportByPartner[p] = (supportByPartner[p] ?? 0) + 1;
+  }
+  let destroyable = 0;
+  for (const [p, rootCount] of Object.entries(supportByPartner)) {
+    const avail = allZhis.filter(z => z === p).length;
+    destroyable += Math.min(rootCount, avail);
+  }
+  return destroyable >= supportZhis.length && supportZhis.length > 0;
 }
 
 // ── 喜忌 ─────────────────────────────────────

@@ -300,7 +300,8 @@ npx turbo run build                                    # 全量编译
 npx tsx packages/knowledge-base/src/__tests__/specialty-engines.test.ts   # L5a 专项引擎
 
 # 回归测试
-npx tsx packages/knowledge-base/src/__tests__/regression-l3.test.ts       # L3 计分 24例
+npx tsx packages/knowledge-base/src/__tests__/regression-l3.test.ts       # L3 计分 24例（强弱二分）
+npx tsx packages/knowledge-base/src/__tests__/regression-l4.test.ts       # L4 变格 27例（从格类型+真假）
 npx tsx packages/knowledge-base/src/__tests__/regression-l5a.test.ts      # L5a 专项 28例
 
 # 单例端到端
@@ -310,10 +311,29 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --scoring
 npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" --report --pdf --ai
 ```
 
-回归测试数据: `data/cases.json` (28例) + `data/expected.json` (L3预期强弱)
-- L3 命中: 24/24（4例跳过：刘媛等从格案例、黄楷钒/TEST-陈葆欣/TEST-AUTO 无 expected）
-  - ℹ️ 从格引擎 `biange-cong.ts` 已上线，刘媛真从格已人工验证正确；但 `expected.json` 仅记录身强/弱二分，从格案例在自动化回归中被 `skip`，未纳入 CI 覆盖
+回归测试数据: `data/cases.json` (27例) + `data/expected.json` (L3预期强弱) + `data/expected-l4.json` (L4预期变格)
+- L3 命中: 24/24（3例跳过：刘媛/刘媛-test 从格走 L4、黄楷钒 expected 拼写 typo「黄楷帆」待修）
+- L4 命中: 27/27（刘媛=从财格真从、李若然=从杀格假从、刘安霖=从财格假从；其余=无变格）
 - L5a 验证: 28/28 全部通过（验证结构合规性+无异常）
+
+## 最新变更（2026-07-07）— 从格回归覆盖 + 周锦俊误报修正 + ziDang parsing 修正
+
+### L4 变格回归框架（新建，补齐从格零覆盖）
+- 新建 `data/expected-l4.json`（27例变格 ground truth）+ `regression-l4.test.ts`，与 L3（强弱二分）分层
+- 跑全 L4 流程 `analyzeChart()`，从 `engines` 解析变格判定（从财/从杀/从儿/从势 + 真从/假从）
+- 锁定：刘媛=从财格真从、李若然=从杀格假从、刘安霖=从财格假从；林翠/郑芷茵/Amanda/邓芳/陈倩怡等=无变格（身弱）
+
+### 周锦俊从格误报修正（`biange-cong.ts`）
+- 周锦俊(1990-09-08，丙火) 误判「假从财格」→ 实为身弱。根因：2个午(比劫) vs 1个子，`areAllRootsDestroyed` 旧逻辑把「每个午的对家在场」当全毁
+- 修正为 **子午冲 1:1 配对**：按冲支分组，可摧毁数=min(根数, 冲支在四支出现数)。1子只冲散1午，另1午存活→非全毁→身弱
+- 关键不退化：林翠走藏干分支（日支辰被 `shishen==='日主'` 排除）不受影响，仍正确身弱；刘媛/李若然/刘安霖地支无印比根→supportZhis=[]→不受影响
+
+### ziDang/YiDang 负号 parsing 修正（`score-engine.ts`）
+- `extractZiDang`/`extractYiDang` 正则 `[\d.]+` 吃不掉负号，ziDang 为负时越过本值误抓同行 yiDang（如周锦俊 ziDang=-0.09 被读成 6.82）
+- 捕获组加 `[-]?`。影响 DB 存储（`l3_scores.zi_dang`）+ 8章报告「全局自党/异党 X 分」（`detailed.ts`）
+
+### 林翠「日主0分」结论
+- 经核验：林翠 day主元素分≈0 但有结构性印比强根（日支辰=比劫）→ 引擎判身弱**正确**，非 bug。「L3 对」不适用——L3 的有效分≈0 与结构性根检查不矛盾，二者量的是不同维度。
 
 ## 最新变更（2026-07-07）— 用神引擎重构为分层架构 + bazi-app 前端
 
@@ -375,10 +395,10 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 
 > 更新于 2026-07-07
 
-- **从格回归覆盖**：从格引擎 `biange-cong.ts` 已实现并接入主流程，刘媛（真从格）已验证判定正确；但 `regression-l3.test.ts` 因 `expected.json` 仅记录身强/弱二分而对从格案例 `skip`，从格未纳入自动化回归。林翠「日主0分」案例待讨论。
 - **education（学业）维度**：仍未整合，编排器仅 11 维，无 `engine-education.ts`。
 - **类型安全债**：`(bazi as any)._precomputed` / `Object.assign` 注入仍存在（详见 `docs/system-flow.md` 问题清单 A–G）。
 - **报告生成器 fallback**：`detailed.ts` 仍可在 `precomputed` 缺失时重算 `determineYongShen()`，打破单一数据源。
+- **expected.json 拼写 typo**：`黄楷帆` 应为 `黄楷钒`（致该例在 L3 回归被 skip）。
 - **文档同步**：`change-log.md`(停在 06-29)、`pending-cases.md`(06-26)、`questions.md`(~60 个待师父确认的算法/古籍问题) 均未跟进最新代码。
 
 ## 编码规范
