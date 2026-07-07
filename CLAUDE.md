@@ -1,5 +1,14 @@
 # Bazi-Destiny 八字命理分析系统
 
+## 仓库与姊妹项目
+
+git 根为 `/Users/carl/Projects/Lucky`，bazi-destiny 是其中的命理分析核心。姊妹项目：
+
+- **`bazi-knowledge-collector`** — 维护 `bazi-destiny/packages/knowledge-base/src/specialty/content/` 下的 11 维断语模板 JSON（各维度的 yong/ji/base.json）。在 bazi-destiny 里看到这批 JSON 有改动，是 collector 的输出，**不是 bazi-destiny 自身代码改动**；可随 bazi-destiny 一起提交。
+- `bazi-scraper`、`gstack` — 其他工具。
+
+工作流：本地直接在 `main` 分支开发，push 到 `github.com/Carl-Tsoi/bazi-destiny`（不开 PR 分支）。
+
 ## 项目架构
 
 六层单向数据流，每层不调用上层函数：
@@ -82,7 +91,7 @@ packages/
       engine-education.ts      — 学业 (旧版，未被新版编排器调用)
       index.ts                 — analyzeAllDimensions() 统一入口 + computeRating()
       types.ts                 — AnalysisItem 类型 + 旧版兼容类型
-      content/                 — 11维分析模板 JSON (yong.json/ji.json/base.json)
+      content/                 — 11维分析模板 JSON (yong.json/ji.json/base.json)  ⚠ 由 bazi-knowledge-collector 维护
                                 key统一英文snake_case，存于src/specialty/content/
     rules/                 — 知识规则
       pattern.ts / rules.ts / rules-lookup.ts / ziwei-rules.ts / bazi-interactions.ts
@@ -368,7 +377,6 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 
 - **从格回归覆盖**：从格引擎 `biange-cong.ts` 已实现并接入主流程，刘媛（真从格）已验证判定正确；但 `regression-l3.test.ts` 因 `expected.json` 仅记录身强/弱二分而对从格案例 `skip`，从格未纳入自动化回归。林翠「日主0分」案例待讨论。
 - **education（学业）维度**：仍未整合，编排器仅 11 维，无 `engine-education.ts`。
-- **旧版 `*Engine()` 桩函数**：待彻底移除。
 - **类型安全债**：`(bazi as any)._precomputed` / `Object.assign` 注入仍存在（详见 `docs/system-flow.md` 问题清单 A–G）。
 - **报告生成器 fallback**：`detailed.ts` 仍可在 `precomputed` 缺失时重算 `determineYongShen()`，打破单一数据源。
 - **文档同步**：`change-log.md`(停在 06-29)、`pending-cases.md`(06-26)、`questions.md`(~60 个待师父确认的算法/古籍问题) 均未跟进最新代码。
