@@ -312,7 +312,7 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 ```
 
 回归测试数据: `data/cases.json` (27例) + `data/expected.json` (L3预期强弱) + `data/expected-l4.json` (L4预期变格)
-- L3 命中: 24/24（3例跳过：刘媛/刘媛-test 从格走 L4、黄楷钒 expected 拼写 typo「黄楷帆」待修）
+- L3 命中: 25/25（2例跳过：刘媛/刘媛-test 从格走 L4）
 - L4 命中: 27/27（刘媛=从财格真从、李若然=从杀格假从、刘安霖=从财格假从；其余=无变格）
 - L5a 验证: 28/28 全部通过（验证结构合规性+无异常）
 
@@ -398,7 +398,6 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 - **education（学业）维度**：仍未整合，编排器仅 11 维，无 `engine-education.ts`。
 - **类型安全债**：`(bazi as any)._precomputed` / `Object.assign` 注入仍存在（详见 `docs/system-flow.md` 问题清单 A–G）。
 - **报告生成器 fallback**：`detailed.ts` 仍可在 `precomputed` 缺失时重算 `determineYongShen()`，打破单一数据源。
-- **expected.json 拼写 typo**：`黄楷帆` 应为 `黄楷钒`（致该例在 L3 回归被 skip）。
 - **文档同步**：`change-log.md`(停在 06-29)、`pending-cases.md`(06-26)、`questions.md`(~60 个待师父确认的算法/古籍问题) 均未跟进最新代码。
 
 ## 编码规范
