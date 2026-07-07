@@ -2,8 +2,6 @@
 export { detectPattern } from './rules/pattern.js';
 export type { PatternResult } from './rules/pattern.js';
 export type { ClassicalRule } from './rules/rules.js';
-export { analyzeZiwei, PATTERN_COMMENTARY, BRIGHTNESS_MEANING, STAR_PALACE_COMPATIBILITY, getSihuaComment } from './rules/ziwei-rules.js';
-export type { StarPalaceInfo } from './rules/ziwei-rules.js';
 export { analyzeInteractions } from './rules/bazi-interactions.js';
 export type { InteractionResult, GanInteraction, ZhiInteraction } from './rules/bazi-interactions.js';
 export { determineYongShen } from './analysis/yongshen.js';

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "npm@10.0.0",
-  "description": "Three-system cross-validation destiny analysis CLI",
+  "description": "Bazi (four-pillar) destiny analysis CLI",
   "workspaces": [
     "packages/*"
   ],

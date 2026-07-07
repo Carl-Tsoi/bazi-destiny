@@ -38,15 +38,30 @@ packages/
       score-engine.ts           — scoreChart() 入口
       scoring-constants.ts      — 查表+工具函数
       climate-coeff-v*.json     — 10组气候表
-    analysis/              — L4: 分析引擎
-      analyzer.ts              — analyzeChart() 编排器
-      yongshen.ts              — determineYongShen() 六引擎
+    analysis/              — L4: 分析层（编排 + 古典方法 + 数据表）
+      analyzer.ts              — analyzeChart() 编排器(L2→L3→L4)
+      yongshen.ts              — determineYongShen() 调度变格+六书引擎
+      dayun-judge.ts           — judgeDayun() 大运吉凶
       method-fuyi.ts           — 扶抑法
       method-tiaohou.ts        — 调候法
+      method-tongguan.ts       — 通关法
+      method-bingyao.ts        — 病药法
+      jiang-wenzheng.ts        — 蒋文正流派断语
       qiongtong.ts             — 调候数据表(十干×十二月)
-      dayun-judge.ts           — judgeDayun()
       types.ts                 — ChartResult/ScoreResult/AnalysisResult
-      engines/                 — 六书引擎(子平/滴天髓/穷通/神峰/渊海/三命)
+    engines/              — L4: 专家系统引擎（分层精炼，非平级投票）
+      types.ts                 — LayeredContext 引擎间流转上下文 + EngineResult
+      biange-zhuangwang.ts     — 变格① 专旺格(曲直/炎上/从革/润下/稼穑)
+      biange-cong.ts           — 变格② 从格(从财/从杀/从儿/从势，真假从+阳干降级)
+      biange-shishang-zhisha.ts— 变格③ 食伤制杀格
+      ziping.ts                — 子平格局法
+      ditiansui.ts             — 滴天髓 扶抑/从化
+      qiongtong.ts             — 穷通宝鉴 调候用神
+      shenfeng.ts              — 神峰通考 病药
+      yuanhai.ts               — 渊海子平 神煞
+      sanming.ts               — 三命通会 奇格
+      ※ yongshen.ts 调用顺序: [专旺, 从格, 食伤制杀, 子平, 滴天髓, 穷通, 神峰, 渊海, 三命]
+         变格引擎命中即 specialPattern=true，中断后续六书
     specialty/             — L5a: 11维专项规则引擎
       shared/
         evaluator.ts           — ★ 统一十神评估器 (所有判断逻辑的唯一入口)
@@ -77,8 +92,7 @@ packages/
     src/report-scoring.ts      — generateScoringReport() 计分报告
     src/types.ts               — PrecomputedData 层间传递类型
   reports/               — L5: AI报表
-    src/ai-engines.ts          — generateAiAnalyses() 原局/大运/流年
-    src/narrative.ts           — generateNarratives() 旧版AI(保留)
+    src/ai-engines.ts          — generateAiAnalyses() 原局/大运/流年（reports 现仅保留此 AI 转出层）
     content/ai-prompts.json    — AI提示词模板
 ```
 
@@ -288,8 +302,33 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 ```
 
 回归测试数据: `data/cases.json` (28例) + `data/expected.json` (L3预期强弱)
-- L3 命中: 24/24（4例跳过：刘媛从格、黄楷钒/TEST-陈葆欣/TEST-AUTO 无预期）
+- L3 命中: 24/24（4例跳过：刘媛等从格案例、黄楷钒/TEST-陈葆欣/TEST-AUTO 无 expected）
+  - ℹ️ 从格引擎 `biange-cong.ts` 已上线，刘媛真从格已人工验证正确；但 `expected.json` 仅记录身强/弱二分，从格案例在自动化回归中被 `skip`，未纳入 CI 覆盖
 - L5a 验证: 28/28 全部通过（验证结构合规性+无异常）
+
+## 最新变更（2026-07-07）— 用神引擎重构为分层架构 + bazi-app 前端
+
+### L4 用神引擎：六书 → 分层精炼 + 变格引擎
+- 新建顶层 `engines/` 目录（从原 `analysis/engines/` 提升），引入 `LayeredContext`：引擎逐层精炼，**非平级投票**
+- 新增 3 个**变格引擎**（命中即 `specialPattern=true`，中断后续六书）：
+  - `biange-zhuangwang.ts` — 专旺格（曲直/炎上/从革/润下/稼穑）
+  - `biange-cong.ts` — 从格（从财/从杀/从儿/从势，含真从/假从判据、根被冲散、阳干降级）
+  - `biange-shishang-zhisha.ts` — 食伤制杀格
+- `yongshen.ts` 调用顺序：`[专旺, 从格, 食伤制杀, 子平, 滴天髓, 穷通, 神峰, 渊海, 三命]`
+- `analysis/` 补齐 `method-tongguan.ts`(通关)、`method-bingyao.ts`(病药)、`jiang-wenzheng.ts`(蒋文正流派)
+
+### bazi-app Web 前端（新建，首次记录入 CLAUDE.md）
+- **uni-app 前端**（`pages/index`、`pages/chart`）+ **Express 后端**（`server/index.js`）
+- 后端通过 `spawn` 调 CLI（`packages/cli/src/index.ts`）+ 直读 `bazi-destiny.db`（`subjects`/`l2_charts`/`l4_analyses`/`l5_specialties` 表）
+- 已实现功能：命例录入、姓名搜索(AJAX)、一键生成报告、PDF(注入 PingFang SC 等 CJK 字体)、AI 复选框(--ai)、`/stats` 统计页、级联删除
+
+### 三术交叉验证死链移除（紫微/占星彻底下线）
+- 删除整包：`packages/engine-ziwei`、`packages/engine-astrology`、`packages/cross-validator`
+- 删除 `knowledge-base/src/rules/ziwei-rules.ts`（唯一消费方是已删的 `reports.generateReport`）
+- `reports/src/index.ts` 移除 `generateReport`/`generateText`/`getCurrentContext` 及 cross-validator、analyzeZiwei 导入，仅保留 `generateAiAnalyses` 转出
+- `knowledge-base/src/index.ts` 移除 `analyzeZiwei`/`PATTERN_COMMENTARY` 等导出
+- `cli/package.json`、`reports/package.json` 清掉对上述包的依赖；根 `package.json` description → "Bazi (four-pillar) destiny analysis CLI"
+- 验证：`turbo run build` 5/5 全绿，L3 24✅/0❌，L5a + specialty 全过，零退化
 
 ## 最新变更（2026-07-02）— 报告格式重设计 + 性别规则修正
 
@@ -324,9 +363,15 @@ npx tsx packages/cli/src/index.ts "1985-12-09 10:30" --gender M --name "张耿" 
 
 ## 当前待办
 
-- 刘媛从格判定待实现
-- education 维度待整合入新版编排器
-- 旧版 *Engine() 桩函数待彻底移除
+> 更新于 2026-07-07
+
+- **从格回归覆盖**：从格引擎 `biange-cong.ts` 已实现并接入主流程，刘媛（真从格）已验证判定正确；但 `regression-l3.test.ts` 因 `expected.json` 仅记录身强/弱二分而对从格案例 `skip`，从格未纳入自动化回归。林翠「日主0分」案例待讨论。
+- **education（学业）维度**：仍未整合，编排器仅 11 维，无 `engine-education.ts`。
+- **旧版 `*Engine()` 桩函数**：待彻底移除。
+- **类型安全债**：`(bazi as any)._precomputed` / `Object.assign` 注入仍存在（详见 `docs/system-flow.md` 问题清单 A–G）。
+- **报告生成器 fallback**：`detailed.ts` 仍可在 `precomputed` 缺失时重算 `determineYongShen()`，打破单一数据源。
+- **core 紫微/占星 schema 清理（第二轮）**：`core/src/schemas/ziwei.ts`、`schemas/astrology.ts`（`ZiweiChart`/`WesternChart` 类型）在主消费者（cross-validator / reports.generateReport）删除后可能已 dead，待确认后清理。
+- **文档同步**：`change-log.md`(停在 06-29)、`pending-cases.md`(06-26)、`questions.md`(~60 个待师父确认的算法/古籍问题) 均未跟进最新代码。
 
 ## 编码规范
 
